@@ -27,3 +27,6 @@ class ConversationState(TypedDict):
 
     # WebSocket connection for sending status updates
     websocket: Optional[WebSocket]
+
+    # Base response before contextual enhancement
+    base_response: Optional[str]

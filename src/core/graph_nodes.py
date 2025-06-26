@@ -118,7 +118,7 @@ Full Document Context:
     response = chain.invoke({"doc_context": doc_context, "query": user_message})
 
     return {
-        "response_to_user": response.content,
+        "base_response": response.content,  # Changed from response_to_user
         "conversation_history": history
         + [HumanMessage(content=user_message), AIMessage(content=response.content)],
     }
@@ -186,6 +186,135 @@ Full Document Context:
     }
 
 
+def contextual_enhancement_node(
+    state: dict, llm: ChatGoogleGenerativeAI, doc_context: str
+):
+    """
+    Analyzes the base response and user query to potentially enhance the response
+    with relevant contextual information from the contract.
+    """
+    base_response = state.get("base_response")
+    user_message = state.get("user_message") or state.get("escalated_question")
+    history = state["conversation_history"]
+    websocket = state.get("websocket")
+
+    print(f"Contextual enhancement - base_response exists: {bool(base_response)}")
+    print(f"Contextual enhancement - user_message: {user_message}")
+    print(f"Contextual enhancement - doc_context exists: {bool(doc_context)}")
+
+    # Validate inputs before proceeding
+    if not base_response:
+        print("Error: No base_response found in state")
+        return {
+            "response_to_user": "An error occurred processing your request.",
+            "base_response": None,
+            "escalated_question": None,
+            "prepared_briefing": None,
+        }
+
+    if not user_message:
+        print(
+            "Warning: No user_message or escalated_question found in state - returning base response"
+        )
+        return {
+            "response_to_user": base_response,
+            "base_response": None,
+            "escalated_question": None,
+            "prepared_briefing": None,
+        }
+
+    # Ensure we have valid strings (not None)
+    user_message = str(user_message).strip()
+    base_response = str(base_response).strip()
+    doc_context = str(doc_context or "").strip()
+
+    if not user_message or not base_response:
+        print("Warning: Empty user_message or base_response - returning base response")
+        return {
+            "response_to_user": base_response,
+            "base_response": None,
+            "escalated_question": None,
+            "prepared_briefing": None,
+        }
+
+    # Send status update
+    if websocket:
+        asyncio.create_task(
+            send_status_if_websocket_available(websocket, "contextual_analysis")
+        )
+
+    try:
+        # Create a single message string to avoid template variable issues
+        full_prompt = f"""You are an expert contract analyst reviewing a response to enhance it with relevant contextual information.
+
+Your task is to analyze the base response and determine if there are specific, relevant details from the contract that would genuinely help the user make better decisions or take appropriate action.
+
+CRITICAL INSTRUCTIONS:
+1. ONLY enhance the response if you find genuinely relevant contextual information
+2. If no relevant context exists, return the base response exactly as provided
+3. When enhancing, integrate the information naturally into the existing response
+4. Focus on information that directly relates to the user's query and the base response
+
+LOOK FOR:
+- Time-sensitive elements related to their query (deadlines, notice periods, due dates)
+- Connected clauses that directly impact what they're asking about
+- Practical implications they need to know for decision-making
+- Financial implications (penalties, fees, payment terms) relevant to their query
+
+DO NOT ADD:
+- General contract information unrelated to their specific question
+- Information that's already covered in the base response
+- Tangential details that would overwhelm the response
+- Context that doesn't help them understand or act on the main answer
+
+ENHANCEMENT APPROACH:
+- Integrate naturally, don't create separate sections
+- Use phrases like "Note that...", "Additionally...", "Keep in mind..."
+- Be concise and specific
+- Include relevant section references
+
+If enhancing, provide the enhanced response. If no relevant context exists, respond with exactly: "NO_ENHANCEMENT_NEEDED"
+
+User's Original Query: {user_message}
+
+Base Response: {base_response}
+
+Full Contract Context: {doc_context}
+
+Please analyze the base response and enhance it with relevant contextual information if beneficial, or respond with "NO_ENHANCEMENT_NEEDED" if no enhancement is warranted."""
+
+        # Use the LLM directly with a simple message structure
+        from langchain_core.messages import HumanMessage
+
+        response = llm.invoke([HumanMessage(content=full_prompt)])
+
+        # Check if enhancement was deemed necessary
+        if response.content.strip() == "NO_ENHANCEMENT_NEEDED":
+            final_response = base_response
+        else:
+            final_response = response.content
+
+        return {
+            "response_to_user": final_response,
+            "base_response": None,
+            "escalated_question": None,
+            "prepared_briefing": None,
+        }
+
+    except Exception as e:
+        print(f"Error in contextual enhancement: {e}")
+        print(f"user_message: '{user_message}'")
+        print(f"base_response length: {len(base_response)}")
+        print(f"doc_context length: {len(doc_context)}")
+        # If there's an error, just return the base response and clear state
+        return {
+            "response_to_user": base_response,
+            "base_response": None,
+            "escalated_question": None,
+            "prepared_briefing": None,
+        }
+
+
 def handle_lawyer_response_node(
     state: dict, llm: ChatGoogleGenerativeAI, doc_context: str
 ):
@@ -194,8 +323,8 @@ def handle_lawyer_response_node(
     or synthesizing a new answer based on corrections.
     """
     lawyer_message = state["lawyer_message"]
-    prepared_briefing = state["prepared_briefing"]
-    escalated_question = state["escalated_question"]
+    prepared_briefing = state.get("prepared_briefing")
+    escalated_question = state.get("escalated_question")
     history = state["conversation_history"]
 
     # Simple check for approval keywords
@@ -294,9 +423,9 @@ Remember: You're delivering expert legal guidance in a way that empowers the cli
         chain = prompt | llm
         response = chain.invoke(
             {
-                "escalated_question": escalated_question,
+                "escalated_question": escalated_question or "the user's question",
                 "lawyer_guidance": lawyer_message,
-                "doc_context": doc_context,
+                "doc_context": doc_context or "",
                 "history": history,
             }
         )
@@ -305,8 +434,6 @@ Remember: You're delivering expert legal guidance in a way that empowers the cli
     ai_response = AIMessage(content=final_response_content)
 
     return {
-        "response_to_user": ai_response.content,
+        "base_response": final_response_content,  # Use the actual content, not ai_response.content
         "conversation_history": history + [ai_response],
-        "escalated_question": None,  # Clear the state
-        "prepared_briefing": None,  # Clear the state
     }

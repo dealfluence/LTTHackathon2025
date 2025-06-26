@@ -150,6 +150,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     )
 
             elif message_type == "lawyer_message":
+
                 current_state = {
                     "user_message": None,
                     "lawyer_message": content,
@@ -160,23 +161,38 @@ async def websocket_endpoint(websocket: WebSocket):
                         "escalated_question"
                     ),
                     "prepared_briefing": sessions[session_id].get("prepared_briefing"),
-                    "websocket": websocket,  # Pass websocket for status updates
+                    "websocket": websocket,
                 }
 
-                final_state = graph.invoke(current_state)
+                try:
+                    final_state = graph.invoke(current_state)
 
-                sessions[session_id]["conversation_history"] = final_state[
-                    "conversation_history"
-                ]
-                sessions[session_id]["escalated_question"] = None
-                sessions[session_id]["prepared_briefing"] = None
+                    # Update session state from final_state (the nodes will clear what they need to)
+                    sessions[session_id]["conversation_history"] = final_state[
+                        "conversation_history"
+                    ]
+                    sessions[session_id]["escalated_question"] = final_state.get(
+                        "escalated_question"
+                    )
+                    sessions[session_id]["prepared_briefing"] = final_state.get(
+                        "prepared_briefing"
+                    )
 
-                await websocket.send_json(
-                    {
-                        "type": "user_response",
-                        "content": final_state["response_to_user"],
-                    }
-                )
+                    await websocket.send_json(
+                        {
+                            "type": "user_response",
+                            "content": final_state["response_to_user"],
+                        }
+                    )
+                except Exception as e:
+                    print(f"Error processing lawyer message: {e}")
+                    print(f"Current state: {current_state}")
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "content": f"An error occurred processing the lawyer's response: {str(e)}",
+                        }
+                    )
 
     except WebSocketDisconnect:
         print(f"Client {session_id} disconnected")

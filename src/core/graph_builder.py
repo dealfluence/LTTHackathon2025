@@ -8,6 +8,7 @@ from .graph_nodes import (
     generate_direct_answer_node,
     generate_lawyer_briefing_node,
     handle_lawyer_response_node,
+    contextual_enhancement_node,
 )
 
 
@@ -48,12 +49,16 @@ def create_conversational_graph(
     lawyer_response_node = partial(
         handle_lawyer_response_node, llm=llm, doc_context=doc_context
     )
+    contextual_node = partial(  # Add this new node
+        contextual_enhancement_node, llm=llm, doc_context=doc_context
+    )
 
     # Add nodes to the graph
     workflow.add_node("router", router_node)
     workflow.add_node("answer", answer_node)
     workflow.add_node("generate_briefing", briefing_node)
     workflow.add_node("handle_lawyer_response", lawyer_response_node)
+    workflow.add_node("contextual_enhancement", contextual_node)
 
     # Define the graph's topology
     workflow.set_conditional_entry_point(
@@ -74,8 +79,13 @@ def create_conversational_graph(
     )
 
     # All paths lead to the end after processing
-    workflow.add_edge("answer", END)
+    workflow.add_edge("answer", "contextual_enhancement")
+    workflow.add_edge("handle_lawyer_response", "contextual_enhancement")
+
+    # Only the briefing goes directly to END (no contextual analysis needed for escalation message)
     workflow.add_edge("generate_briefing", END)
-    workflow.add_edge("handle_lawyer_response", END)
+
+    # Final enhanced response goes to END
+    workflow.add_edge("contextual_enhancement", END)
 
     return workflow.compile()

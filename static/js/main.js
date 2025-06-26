@@ -60,6 +60,14 @@ async function showStatusProgression(type) {
     // State 3A: Direct response
     await new Promise((resolve) => setTimeout(resolve, 500));
     updateStatusMessage(currentStatusElement, "Bob is preparing your response");
+  } else if (type === "contextual_analysis") {
+    // Add this new case
+    // State 4: Contextual analysis (for both direct and lawyer paths)
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    updateStatusMessage(
+      currentStatusElement,
+      "Bob is checking for related contract details"
+    );
   } else if (type === "lawyer_processing") {
     // State 4: Processing lawyer response
     currentStatusElement = appendStatusMessage(
@@ -141,6 +149,9 @@ document.addEventListener("DOMContentLoaded", () => {
         showStatusProgression("escalation");
       } else if (data.status === "direct_response") {
         showStatusProgression("direct_response");
+      } else if (data.status === "contextual_analysis") {
+        // Add this new status
+        showStatusProgression("contextual_analysis");
       }
     }
   }
