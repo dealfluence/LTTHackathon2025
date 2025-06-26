@@ -2,7 +2,7 @@ import pdfplumber
 import docx
 from pathlib import Path
 from typing import Dict, Any, List
-from ..interfaces.document_source import DocumentSource
+from interfaces.document_source import DocumentSource
 
 
 class LocalFileSource(DocumentSource):

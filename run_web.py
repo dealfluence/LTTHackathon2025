@@ -28,7 +28,6 @@ if __name__ == "__main__":
     print(
         f"🌐 Server will start at: http://{web_config.get('host', '0.0.0.0')}:{web_config.get('port', 8000)}"
     )
-
     # Run the FastAPI application
     uvicorn.run(
         "implementations.web.main:app",

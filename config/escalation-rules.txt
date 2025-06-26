@@ -1,0 +1,24 @@
+# Escalation Rules for Legal Bot "Bob"
+#
+# If the user's query mentions any of the following topics or intents,
+# the query MUST be escalated to a human lawyer.
+
+# --- Keywords ---
+- liability
+- indemnity
+- terminate contract
+- sue
+- litigation
+- court
+- unlimited liability
+- breach
+- data breach
+- data residency
+- non compete
+- exclusivity
+
+# --- Intents ---
+- User is expressing extreme dissatisfaction or anger.
+- User is asking for a definitive legal opinion or advice, not just information retrieval.
+- User is questioning the validity or enforceability of the contract itself.
+- User asks about a topic not covered in the provided documents.

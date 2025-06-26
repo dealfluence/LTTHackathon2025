@@ -1,269 +1,192 @@
+import asyncio
 import os
 import uuid
-import asyncio
 from pathlib import Path
-from typing import List, Dict, Any, Optional
-from datetime import datetime
-
-from fastapi import (
-    FastAPI,
-    UploadFile,
-    File,
-    Form,
-    Request,
-    HTTPException,
-    BackgroundTasks,
-)
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, JSONResponse
-import aiofiles
-
-# Add src to path
 import sys
 
-sys.path.append(str(Path(__file__).parent.parent.parent / "src"))
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from langchain_core.messages import AIMessage
+from langchain_google_genai import ChatGoogleGenerativeAI
 
-from src.config.config_manager import ConfigManager
-from src.storage.local_storage import LocalStorageAdapter
-from src.document_sources.local_file_source import LocalFileSource
-from src.core.workflow_builder import create_workflow
+# Adjust sys.path to include the src directory
+src_path = Path(__file__).resolve().parents[2] / "src"
+sys.path.insert(0, str(src_path))
 
-# Initialize FastAPI app
-app = FastAPI(
-    title="Legal Contract Analysis Bot",
-    description="AI-powered legal contract analysis with risk assessment",
-    version="1.0.0",
-)
+from config.config_manager import ConfigManager
+from core.graph_builder import create_conversational_graph
+from document_sources.local_file_source import LocalFileSource
 
-# Configuration
-config = ConfigManager()
+# --- Application Setup ---
+app = FastAPI()
 
-# Static files and templates
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="implementations/web/templates")
-
-# Initialize components
-storage = LocalStorageAdapter(config.get("storage.local.base_path", "./data"))
-document_source = LocalFileSource()
-workflow = create_workflow()
-
-# Ensure upload directory exists
-upload_dir = Path(config.get("document_processing.temp_upload_path", "./data/uploads"))
-upload_dir.mkdir(parents=True, exist_ok=True)
-
-# In-memory storage for analysis progress (in production, use Redis)
-analysis_progress = {}
+# In-memory session management
+sessions = {}
 
 
-@app.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request):
-    """Main dashboard page"""
-    recent_analyses = await storage.list_analyses()
-    recent_analyses = recent_analyses[:10]  # Show last 10
+@app.on_event("startup")
+async def startup_event():
+    """
+    Initializes and loads all application dependencies asynchronously
+    when the application starts.
+    """
+    print("Initializing application dependencies...")
+    config_manager = ConfigManager()
+    llm_config = config_manager.get_llm_config()
+    doc_config = config_manager.get_document_config()
 
-    return templates.TemplateResponse(
-        "dashboard.html",
-        {
-            "request": request,
-            "recent_analyses": recent_analyses,
-            "total_analyses": len(recent_analyses),
-        },
+    # Load context from files
+    doc_source = LocalFileSource()
+    knowledge_base_path = Path(doc_config.get("knowledge_base_path"))
+
+    full_doc_context = ""
+    if knowledge_base_path.exists():
+        for file_path in knowledge_base_path.glob("*"):
+            if doc_source.validate_source(str(file_path)):
+                print(f"Loading document: {file_path.name}")
+                # Correctly await the async function
+                doc_data = await doc_source.load_document(str(file_path))
+                full_doc_context += (
+                    f"\n\n--- Document: {file_path.name} ---\n\n{doc_data['content']}"
+                )
+
+    escalation_rules_path = Path(doc_config.get("escalation_rules_file"))
+    escalation_rules = ""
+    if escalation_rules_path.exists():
+        print(f"Loading escalation rules from: {escalation_rules_path.name}")
+        escalation_rules = escalation_rules_path.read_text()
+
+    llm = ChatGoogleGenerativeAI(
+        model=llm_config.get("model"),
+        google_api_key=os.getenv("GOOGLE_API_KEY"),
+        temperature=llm_config.get("temperature"),
     )
 
+    # Store the compiled graph in the app's state for global access
+    app.state.graph = create_conversational_graph(
+        llm, full_doc_context, escalation_rules
+    )
+    print("Application dependencies initialized and graph compiled.")
 
-@app.post("/analyze")
-async def analyze_contract(
-    background_tasks: BackgroundTasks,
-    file: Optional[UploadFile] = File(None),
-    sharepoint_url: Optional[str] = Form(None),
-):
-    """Start contract analysis"""
 
-    if not file and not sharepoint_url:
-        raise HTTPException(
-            status_code=400, detail="Must provide either file or SharePoint URL"
-        )
+# Mount static files
+static_path = Path(__file__).resolve().parents[2] / "static"
+app.mount("/static", StaticFiles(directory=static_path), name="static")
 
-    # Generate analysis ID
-    analysis_id = str(uuid.uuid4())
+# Setup templates
+templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
-    # Initialize progress tracking
-    analysis_progress[analysis_id] = {
-        "status": "starting",
-        "progress": 0,
-        "current_step": "Initializing",
-        "started_at": datetime.now().isoformat(),
+
+@app.get("/")
+async def get_chat_page(request: Request):
+    """Serves the main chat page."""
+    return templates.TemplateResponse("chat.html", {"request": request})
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    session_id = str(uuid.uuid4())
+    sessions[session_id] = {
+        "conversation_history": [],
+        "escalated_question": None,
+        "prepared_briefing": None,
     }
 
-    if file:
-        # Handle file upload
-        file_path = upload_dir / f"{analysis_id}_{file.filename}"
-        async with aiofiles.open(file_path, "wb") as f:
-            content = await file.read()
-            await f.write(content)
-
-        # Start background analysis
-        background_tasks.add_task(run_analysis, analysis_id, str(file_path), "file")
-    else:
-        # Handle SharePoint URL (simplified - just return error for now)
-        raise HTTPException(
-            status_code=501, detail="SharePoint URL processing not implemented yet"
-        )
-
-    return JSONResponse(
+    # Send initial greeting
+    await websocket.send_json(
         {
-            "analysis_id": analysis_id,
-            "status": "started",
-            "message": "Analysis started successfully",
+            "type": "user_response",
+            "content": "Hi! I'm Bob. How can I help you today?",
         }
     )
 
-
-async def run_analysis(analysis_id: str, source_path: str, source_type: str):
-    """Run the contract analysis workflow"""
     try:
-        # Update progress
-        analysis_progress[analysis_id].update(
-            {"status": "processing", "progress": 10, "current_step": "Loading document"}
-        )
+        while True:
+            data = await websocket.receive_json()
+            message_type = data.get("type")
+            content = data.get("content")
 
-        # Load document
-        document_data = await document_source.load_document(source_path)
+            # Get the graph from the application state
+            graph = websocket.app.state.graph
 
-        # Update progress
-        analysis_progress[analysis_id].update(
-            {"progress": 30, "current_step": "Extracting clauses"}
-        )
+            if message_type == "user_message":
+                current_state = {
+                    "user_message": content,
+                    "lawyer_message": None,
+                    "conversation_history": sessions[session_id][
+                        "conversation_history"
+                    ],
+                    "escalated_question": sessions[session_id].get(
+                        "escalated_question"
+                    ),
+                    "prepared_briefing": sessions[session_id].get("prepared_briefing"),
+                }
 
-        # Prepare initial state
-        initial_state = {
-            "document_content": document_data["content"],
-            "document_metadata": document_data["metadata"],
-            "analysis_id": analysis_id,
-            "review_required": False,
-            "analysis_complete": False,
-            "current_step": "starting",
-        }
+                final_state = graph.invoke(current_state)
 
-        # Run workflow
-        result = await asyncio.to_thread(workflow.invoke, initial_state)
+                sessions[session_id]["conversation_history"] = final_state[
+                    "conversation_history"
+                ]
+                sessions[session_id]["escalated_question"] = final_state.get(
+                    "escalated_question"
+                )
+                sessions[session_id]["prepared_briefing"] = final_state.get(
+                    "prepared_briefing"
+                )
 
-        # Update progress
-        analysis_progress[analysis_id].update(
-            {"progress": 90, "current_step": "Saving results"}
-        )
+                await websocket.send_json(
+                    {
+                        "type": "user_response",
+                        "content": final_state["response_to_user"],
+                    }
+                )
 
-        # Save results
-        analysis_data = {
-            "analysis_id": analysis_id,
-            "document_metadata": document_data["metadata"],
-            "extracted_clauses": result.get("extracted_clauses"),
-            "risk_assessment": result.get("risk_assessment"),
-            "summary": result.get("summary"),
-            "review_required": result.get("review_required", False),
-            "analysis_complete": result.get("analysis_complete", True),
-            "created_at": datetime.now().isoformat(),
-            "source_type": source_type,
-            "source_path": (
-                source_path
-                if source_type == "sharepoint"
-                else document_data["filename"]
-            ),
-        }
+                if final_state.get("message_to_lawyer"):
+                    await websocket.send_json(
+                        {
+                            "type": "lawyer_request",
+                            "content": final_state["message_to_lawyer"],
+                        }
+                    )
 
-        await storage.save_analysis(analysis_id, analysis_data)
+            elif message_type == "lawyer_message":
+                current_state = {
+                    "user_message": None,
+                    "lawyer_message": content,
+                    "conversation_history": sessions[session_id][
+                        "conversation_history"
+                    ],
+                    "escalated_question": sessions[session_id].get(
+                        "escalated_question"
+                    ),
+                    "prepared_briefing": sessions[session_id].get("prepared_briefing"),
+                }
 
-        # Final progress update
-        analysis_progress[analysis_id].update(
-            {
-                "status": "completed",
-                "progress": 100,
-                "current_step": "Complete",
-                "completed_at": datetime.now().isoformat(),
-            }
-        )
+                final_state = graph.invoke(current_state)
 
-        # Clean up uploaded file
-        if source_type == "file" and Path(source_path).exists():
-            Path(source_path).unlink()
+                sessions[session_id]["conversation_history"] = final_state[
+                    "conversation_history"
+                ]
+                sessions[session_id]["escalated_question"] = None
+                sessions[session_id]["prepared_briefing"] = None
 
+                await websocket.send_json(
+                    {
+                        "type": "user_response",
+                        "content": final_state["response_to_user"],
+                    }
+                )
+
+    except WebSocketDisconnect:
+        print(f"Client {session_id} disconnected")
+        if session_id in sessions:
+            del sessions[session_id]
     except Exception as e:
-        analysis_progress[analysis_id].update(
-            {"status": "error", "error": str(e), "current_step": "Error occurred"}
+        print(f"An error occurred with client {session_id}: {e}")
+        await websocket.send_json(
+            {"type": "error", "content": f"An unexpected error occurred: {str(e)}"}
         )
-
-
-@app.get("/analysis/{analysis_id}")
-async def get_analysis(request: Request, analysis_id: str):
-    """View specific analysis results"""
-    analysis = await storage.get_analysis(analysis_id)
-
-    if not analysis:
-        raise HTTPException(status_code=404, detail="Analysis not found")
-
-    return templates.TemplateResponse(
-        "analysis_result.html", {"request": request, "analysis": analysis}
-    )
-
-
-@app.get("/api/status/{analysis_id}")
-async def get_analysis_status(analysis_id: str):
-    """Get analysis progress status"""
-    if analysis_id not in analysis_progress:
-        # Check if analysis exists in storage
-        analysis = await storage.get_analysis(analysis_id)
-        if analysis:
-            return JSONResponse(
-                {"status": "completed", "progress": 100, "current_step": "Complete"}
-            )
-        else:
-            raise HTTPException(status_code=404, detail="Analysis not found")
-
-    return JSONResponse(analysis_progress[analysis_id])
-
-
-@app.get("/analyses")
-async def list_analyses(request: Request, risk_level: Optional[str] = None):
-    """List all analyses with optional filtering"""
-    filters = {}
-    if risk_level:
-        filters["risk_level"] = risk_level
-
-    analyses = await storage.list_analyses(filters)
-
-    return templates.TemplateResponse(
-        "analyses_list.html",
-        {"request": request, "analyses": analyses, "current_filter": risk_level},
-    )
-
-
-@app.delete("/api/analysis/{analysis_id}")
-async def delete_analysis(analysis_id: str):
-    """Delete an analysis"""
-    success = await storage.delete_analysis(analysis_id)
-
-    if not success:
-        raise HTTPException(status_code=404, detail="Analysis not found")
-
-    return JSONResponse({"message": "Analysis deleted successfully"})
-
-
-@app.get("/config")
-async def config_page(request: Request):
-    """Configuration page"""
-    return templates.TemplateResponse(
-        "config.html", {"request": request, "config": config._config}
-    )
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    web_config = config.get_web_config()
-    uvicorn.run(
-        app,
-        host=web_config.get("host", "0.0.0.0"),
-        port=web_config.get("port", 8000),
-        reload=web_config.get("reload", True),
-    )
+        if session_id in sessions:
+            del sessions[session_id]

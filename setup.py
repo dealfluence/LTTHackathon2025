@@ -31,7 +31,7 @@ def create_env_file():
     env_file = Path(".env")
     if not env_file.exists():
         env_content = """# Legal Contract Analysis Bot Environment Variables
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
+GOOGLE_API_KEY=your_google_api_key_here
 LOG_LEVEL=INFO
 """
         with open(env_file, "w") as f:
@@ -90,7 +90,7 @@ def main():
 
     print("\n🎉 Setup complete!")
     print("\n📋 Next steps:")
-    print("1. Update .env file with your Anthropic API key")
+    print("1. Update .env file with your GOOGLE_API_KEY=your_google_api_key_here")
     print("2. Install dependencies: pip install -r requirements/web.txt")
     print("3. Run the application: python run_web.py")
     print("4. Open http://localhost:8000 in your browser")

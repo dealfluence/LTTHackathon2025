@@ -5,7 +5,7 @@ python-multipart
 aiofiles
 langgraph
 langchain
-langchain-anthropic
+langchain-google-genai
 pydantic
 python-dotenv
 pyyaml

@@ -11,22 +11,16 @@ interface:
     reload: true
 
 storage:
-  type: "local"
-  local:
-    base_path: "./data"
+  # type: "local"
+  # local:
+  #   base_path: "./data"
 
 llm:
-  provider: "anthropic"
-  model: "claude-3-5-sonnet-latest"
-  temperature: 0.1
-  max_tokens: 4000
+  provider: "google_gemini"
+  model: "gemini-2.5-pro"
+  temperature: 0.2
 
 document_processing:
-  max_file_size_mb: 50
-  supported_formats: ["pdf", "docx", "txt"]
-  temp_upload_path: "./data/uploads"
+  knowledge_base_path: "./data/knowledge_base"
+  escalation_rules_file: "./config/escalation-rules.txt"
 
-risk_assessment:
-  default_rules_file: "./config/risk-rules.json"
-  high_risk_threshold: 7
-  medium_risk_threshold: 4
