@@ -84,6 +84,11 @@ async def get_chat_page(request: Request):
     return templates.TemplateResponse("chat.html", {"request": request})
 
 
+async def send_status_update(websocket: WebSocket, status: str):
+    """Send status update to client"""
+    await websocket.send_json({"type": "status_update", "status": status})
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
@@ -114,6 +119,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         "escalated_question"
                     ),
                     "prepared_briefing": sessions[session_id].get("prepared_briefing"),
+                    "websocket": websocket,  # Pass websocket for status updates
                 }
 
                 final_state = graph.invoke(current_state)
@@ -154,6 +160,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         "escalated_question"
                     ),
                     "prepared_briefing": sessions[session_id].get("prepared_briefing"),
+                    "websocket": websocket,  # Pass websocket for status updates
                 }
 
                 final_state = graph.invoke(current_state)

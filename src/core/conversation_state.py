@@ -1,4 +1,5 @@
 from typing import List, Optional
+from fastapi import WebSocket
 from typing_extensions import TypedDict
 from langchain_core.messages import BaseMessage
 
@@ -23,3 +24,6 @@ class ConversationState(TypedDict):
     # This provides context when the lawyer responds.
     escalated_question: Optional[str]
     prepared_briefing: Optional[str]
+
+    # WebSocket connection for sending status updates
+    websocket: Optional[WebSocket]

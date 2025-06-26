@@ -4,6 +4,17 @@ from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
+import asyncio
+
+
+async def send_status_if_websocket_available(websocket, status: str):
+    """Helper function to send status updates if websocket is available"""
+    if websocket:
+        try:
+            await websocket.send_json({"type": "status_update", "status": status})
+        except Exception as e:
+            # Silently handle websocket errors to not break the flow
+            pass
 
 
 # Pydantic model for the router's structured output
@@ -19,6 +30,7 @@ def escalation_router_node(
     """Decides whether to escalate to a lawyer or answer directly."""
     user_message = state["user_message"]
     history = state["conversation_history"]
+    websocket = state.get("websocket")
 
     prompt = ChatPromptTemplate.from_messages(
         [
@@ -46,6 +58,17 @@ Based on the user's latest message and the conversation history, decide whether 
             "query": user_message,
         }
     )
+
+    # Send status update based on decision
+    if websocket:
+        if response.decision == "escalate_to_lawyer":
+            asyncio.create_task(
+                send_status_if_websocket_available(websocket, "escalation")
+            )
+        else:
+            asyncio.create_task(
+                send_status_if_websocket_available(websocket, "direct_response")
+            )
 
     return {"decision": response.decision}
 
