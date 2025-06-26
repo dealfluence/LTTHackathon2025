@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Legal Contract Analysis Bot{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Legal Contract Analysis Dashboard</h1>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ total_analyses }}</h4>
+                        <p class="mb-0">Total Analyses</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-file-text fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ recent_analyses | selectattr('risk_assessment.overall_risk', 'equalto', 'low') | list | length }}</h4>
+                        <p class="mb-0">Low Risk</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-check-circle fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ recent_analyses | selectattr('risk_assessment.overall_risk', 'in', ['medium', 'high']) | list | length }}</h4>
+                        <p class="mb-0">Needs Review</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-exclamation-triangle fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Analysis Form -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-plus-circle"></i>
+                    Analyze New Contract
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="analysisForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label">Choose Analysis Method:</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="analysisMethod" id="methodFile" value="file" checked>
+                            <label class="form-check-label" for="methodFile">
+                                Upload File
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="analysisMethod" id="methodSharepoint" value="sharepoint">
+                            <label class="form-check-label" for="methodSharepoint">
+                                SharePoint URL
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- File Upload -->
+                    <div id="fileUploadSection" class="mb-3">
+                        <label for="contractFile" class="form-label">Contract File</label>
+                        <input type="file" class="form-control" id="contractFile" name="file" 
+                               accept=".pdf,.docx,.txt" required>
+                        <div class="form-text">Supported formats: PDF, DOCX, TXT (Max 50MB)</div>
+                    </div>
+                    
+                    <!-- SharePoint URL -->
+                    <div id="sharepointSection" class="mb-3" style="display: none;">
+                        <label for="sharepointUrl" class="form-label">SharePoint Document URL</label>
+                        <input type="url" class="form-control" id="sharepointUrl" name="sharepoint_url" 
+                               placeholder="https://company.sharepoint.com/sites/legal/documents/contract.pdf">
+                        <div class="form-text">Paste the direct link to the contract document</div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" id="analyzeBtn">
+                        <i class="bi bi-play-circle"></i>
+                        Start Analysis
+                    </button>
+                </form>
+                
+                <!-- Progress Section -->
+                <div id="progressSection" style="display: none;" class="mt-4">
+                    <h6>Analysis Progress</h6>
+                    <div class="progress mb-2">
+                        <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <p id="progressText" class="text-muted mb-0">Initializing...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Analyses -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-clock-history"></i>
+                    Recent Analyses
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if recent_analyses %}
+                    {% for analysis in recent_analyses[:5] %}
+                    <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                        <div>
+                            <h6 class="mb-1">{{ analysis.document_metadata.filename or 'Unknown' }}</h6>
+                            <small class="text-muted">{{ analysis.created_at[:19] | replace('T', ' ') }}</small>
+                        </div>
+                        <div>
+                            {% set risk = analysis.risk_assessment.overall_risk if analysis.risk_assessment else 'unknown' %}
+                            {% if risk == 'low' %}
+                                <span class="badge bg-success">Low Risk</span>
+                            {% elif risk == 'medium' %}
+                                <span class="badge bg-warning">Medium Risk</span>
+                            {% elif risk == 'high' %}
+                                <span class="badge bg-danger">High Risk</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Unknown</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    <div class="text-center mt-3">
+                        <a href="/analyses" class="btn btn-outline-primary btn-sm">View All</a>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center">No analyses yet. Upload a contract to get started!</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('analysisForm');
+    const methodRadios = document.querySelectorAll('input[name="analysisMethod"]');
+    const fileSection = document.getElementById('fileUploadSection');
+    const sharepointSection = document.getElementById('sharepointSection');
+    const progressSection = document.getElementById('progressSection');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    
+    // Toggle between file upload and SharePoint URL
+    methodRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'file') {
+                fileSection.style.display = 'block';
+                sharepointSection.style.display = 'none';
+                document.getElementById('contractFile').required = true;
+                document.getElementById('sharepointUrl').required = false;
+            } else {
+                fileSection.style.display = 'none';
+                sharepointSection.style.display = 'block';
+                document.getElementById('contractFile').required = false;
+                document.getElementById('sharepointUrl').required = true;
+            }
+        });
+    });
+    
+    // Form submission
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        
+        // Show progress section
+        progressSection.style.display = 'block';
+        analyzeBtn.disabled = true;
+        
+        try {
+            const response = await fetch('/analyze', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                // Start polling for progress
+                pollProgress(result.analysis_id);
+            } else {
+                throw new Error(result.detail || 'Analysis failed');
+            }
+        } catch (error) {
+            alert('Error starting analysis: ' + error.message);
+            progressSection.style.display = 'none';
+            analyzeBtn.disabled = false;
+        }
+    });
+    
+    function pollProgress(analysisId) {
+        const interval = setInterval(async () => {
+            try {
+                const response = await fetch(`/api/status/${analysisId}`);
+                const status = await response.json();
+                
+                // Update progress bar
+                progressBar.style.width = status.progress + '%';
+                progressBar.textContent = status.progress + '%';
+                progressText.textContent = status.current_step;
+                
+                if (status.status === 'completed') {
+                    clearInterval(interval);
+                    progressText.textContent = 'Analysis complete! Redirecting...';
+                    setTimeout(() => {
+                        window.location.href = `/analysis/${analysisId}`;
+                    }, 1000);
+                } else if (status.status === 'error') {
+                    clearInterval(interval);
+                    progressText.textContent = 'Error: ' + (status.error || 'Unknown error');
+                    analyzeBtn.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error polling progress:', error);
+            }
+        }, 1000);
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Analysis Results - {{ analysis.document_metadata.filename }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Analysis Results</h1>
+            <div>
+                <a href="/" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Dashboard
+                </a>
+                <button class="btn btn-outline-primary" onclick="window.print()">
+                    <i class="bi bi-printer"></i> Print
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Document Info -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5><i class="bi bi-file-text"></i> Document Information</h5>
+                        <p><strong>Filename:</strong> {{ analysis.document_metadata.filename or 'Unknown' }}</p>
+                        <p><strong>File Type:</strong> {{ analysis.document_metadata.file_type | upper }}</p>
+                        <p><strong>Analyzed:</strong> {{ analysis.created_at[:19] | replace('T', ' ') }}</p>
+                        {% if analysis.document_metadata.pages %}
+                        <p><strong>Pages:</strong> {{ analysis.document_metadata.pages }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <h5><i class="bi bi-shield-exclamation"></i> Risk Assessment</h5>
+                        {% set risk = analysis.risk_assessment.overall_risk if analysis.risk_assessment else 'unknown' %}
+                        {% if risk == 'low' %}
+                            <span class="badge bg-success fs-6 mb-2">LOW RISK</span>
+                        {% elif risk == 'medium' %}
+                            <span class="badge bg-warning fs-6 mb-2">MEDIUM RISK</span>
+                        {% elif risk == 'high' %}
+                            <span class="badge bg-danger fs-6 mb-2">HIGH RISK</span>
+                        {% else %}
+                            <span class="badge bg-secondary fs-6 mb-2">UNKNOWN RISK</span>
+                        {% endif %}
+                        
+                        {% if analysis.risk_assessment %}
+                        <p><strong>Risk Score:</strong> {{ analysis.risk_assessment.risk_score }}/10</p>
+                        <p><strong>Review Required:</strong> 
+                            {% if analysis.review_required %}
+                                <span class="text-warning">Yes</span>
+                            {% else %}
+                                <span class="text-success">No</span>
+                            {% endif %}
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary -->
+{% if analysis.summary %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-card-text"></i>
+                    Executive Summary
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="summary-content">
+                    {{ analysis.summary | replace('\n', '<br>') | safe }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Risk Details -->
+{% if analysis.risk_assessment %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Risk Analysis Details
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Risk Breakdown</h6>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Termination Risk:</span>
+                                <span class="badge bg-{{ 'danger' if analysis.risk_assessment.termination_risk == 'high' else 'warning' if analysis.risk_assessment.termination_risk == 'medium' else 'success' }}">
+                                    {{ analysis.risk_assessment.termination_risk | title }}
+                                </span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Indemnity Risk:</span>
+                                <span class="badge bg-{{ 'danger' if analysis.risk_assessment.indemnity_risk == 'high' else 'warning' if analysis.risk_assessment.indemnity_risk == 'medium' else 'success' }}">
+                                    {{ analysis.risk_assessment.indemnity_risk | title }}
+                                </span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Governing Law Risk:</span>
+                                <span class="badge bg-{{ 'danger' if analysis.risk_assessment.governing_law_risk == 'high' else 'warning' if analysis.risk_assessment.governing_law_risk == 'medium' else 'success' }}">
+                                    {{ analysis.risk_assessment.governing_law_risk | title }}
+                                </span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Liability Risk:</span>
+                                <span class="badge bg-{{ 'danger' if analysis.risk_assessment.liability_risk == 'high' else 'warning' if analysis.risk_assessment.liability_risk == 'medium' else 'success' }}">
+                                    {{ analysis.risk_assessment.liability_risk | title }}
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        {% if analysis.risk_assessment.red_flags %}
+                        <h6>Red Flags Identified</h6>
+                        <ul class="list-unstyled">
+                            {% for flag in analysis.risk_assessment.red_flags %}
+                            <li class="mb-2">
+                                <i class="bi bi-exclamation-circle text-danger"></i>
+                                {{ flag }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <h6>Red Flags</h6>
+                        <p class="text-success">
+                            <i class="bi bi-check-circle"></i>
+                            No significant red flags identified
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Extracted Clauses -->
+{% if analysis.extracted_clauses %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-list-ul"></i>
+                    Extracted Key Clauses
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="accordion" id="clausesAccordion">
+                    {% for clause_type, clause_text in analysis.extracted_clauses.items() %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading{{ loop.index }}">
+                            <button class="accordion-button collapsed" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#collapse{{ loop.index }}">
+                                {{ clause_type | replace('_', ' ') | title }}
+                            </button>
+                        </h2>
+                        <div id="collapse{{ loop.index }}" class="accordion-collapse collapse" 
+                             data-bs-parent="#clausesAccordion">
+                            <div class="accordion-body">
+                                <p>{{ clause_text }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Actions -->
+{% if analysis.review_required %}
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-warning">
+            <h5><i class="bi bi-exclamation-triangle"></i> Human Review Required</h5>
+            <p>This contract has been flagged for human review due to {{ analysis.risk_assessment.overall_risk }} risk level. 
+               Please have a legal team member review the identified risks before proceeding.</p>
+            <button class="btn btn-warning">
+                <i class="bi bi-person-check"></i>
+                Request Legal Review
+            </button>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

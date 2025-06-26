@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Configuration - Legal Contract Analysis Bot{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Configuration</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-gear"></i>
+                    Application Settings
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="configForm">
+                    <div class="mb-4">
+                        <h6>Document Processing</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label">Max File Size (MB)</label>
+                                <input type="number" class="form-control" value="{{ config.document_processing.max_file_size_mb }}" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Supported Formats</label>
+                                <input type="text" class="form-control" value="{{ config.document_processing.supported_formats | join(', ') }}" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6>Risk Assessment</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label">High Risk Threshold</label>
+                                <input type="number" class="form-control" value="{{ config.risk_assessment.high_risk_threshold }}" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Medium Risk Threshold</label>
+                                <input type="number" class="form-control" value="{{ config.risk_assessment.medium_risk_threshold }}" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6>LLM Configuration</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label">Provider</label>
+                                <input type="text" class="form-control" value="{{ config.llm.provider }}" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Model</label>
+                                <input type="text" class="form-control" value="{{ config.llm.model }}" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        Configuration changes require editing the <code>config/config.yaml</code> file and restarting the application.
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-shield-check"></i>
+                    Risk Rules
+                </h5>
+            </div>
+            <div class="card-body">
+                <p>Risk assessment rules are loaded from:</p>
+                <code>{{ config.risk_assessment.default_rules_file }}</code>
+                
+                <div class="mt-3">
+                    <button class="btn btn-outline-primary" onclick="viewRiskRules()">
+                        <i class="bi bi-eye"></i>
+                        View Rules
+                    </button>
+                </div>
+                
+                <div class="mt-3">
+                    <small class="text-muted">
+                        To modify risk rules, edit the JSON file and restart the application.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function viewRiskRules() {
+    // In a real implementation, this would show the risk rules
+    alert('Risk rules viewing functionality would be implemented here.');
+}
+</script>
+{% endblock %}

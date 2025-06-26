@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+jinja2
+python-multipart
+aiofiles
+langgraph
+langchain
+langchain-anthropic
+pydantic
+python-dotenv
+pyyaml
+pdfplumber
+python-docx
+pytesseract
+pillow
+requests
+rich

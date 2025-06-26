@@ -1,0 +1,26 @@
+{
+  "termination_rules": {
+    "min_notice_days": 60,
+    "risk_weights": {
+      "less_than_30": 8,
+      "30_to_60": 5,
+      "more_than_60": 2
+    }
+  },
+  "governing_law_rules": {
+    "approved_jurisdictions": ["New York", "Delaware", "California"],
+    "risk_weights": {
+      "approved": 1,
+      "domestic_other": 4,
+      "international": 7
+    }
+  },
+  "liability_rules": {
+    "max_liability_multiplier": 5.0,
+    "risk_weights": {
+      "unlimited": 9,
+      "high_multiplier": 6,
+      "reasonable": 2
+    }
+  }
+}
