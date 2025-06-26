@@ -18,7 +18,7 @@ storage:
 llm:
   provider: "google_gemini"
   model: "gemini-2.5-pro"
-  temperature: 0.2
+  temperature: 1
 
 document_processing:
   knowledge_base_path: "./data/knowledge_base"
