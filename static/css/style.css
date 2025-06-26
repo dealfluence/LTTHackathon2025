@@ -194,3 +194,42 @@ footer {
 ::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
 }
+
+/* Add flex display to chat boxes */
+#user-chat-box, #lawyer-chat-box {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Custom styles for chat messages */
+.message-container {
+    position: relative;
+    max-width: 95%; /* Messages don't span the full width */
+    word-wrap: break-word; /* Ensure long words don't overflow */
+}
+
+/* Styles for messages from Bob (AI) - left aligned */
+.message-bob {
+    align-self: flex-start;
+    background-color: #e9ecef; /* A light grey for Bob */
+    border-radius: 1rem 1rem 1rem 0;
+}
+
+/* Styles for messages from a human - right aligned */
+.message-human {
+    align-self: flex-end;
+    background-color: #cfe2ff; /* A light blue for the user */
+    border-radius: 1rem 1rem 0 1rem;
+}
+
+.message-reaction {
+    position: absolute;
+    bottom: -8px; /* Position it slightly below the message box */
+    right: 8px;  /* Position it from the right */
+    font-size: 0.9rem;
+    background-color: #f8f9fa; /* Match the page background */
+    border-radius: 10px;
+    padding: 1px 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1); /* Add a subtle shadow for depth */
+    user-select: none; /* Make it non-selectable */
+}

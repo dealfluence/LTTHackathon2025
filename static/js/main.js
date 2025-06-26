@@ -1,4 +1,3 @@
-// FILE: static/js/main.js
 document.addEventListener('DOMContentLoaded', () => {
     const userInput = document.getElementById('user-input');
     const userForm = document.getElementById('user-form');
@@ -11,6 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const status = document.getElementById('status');
 
     let ws;
+    let lastUserMessageEl = null; // To track the last user message element for the reaction
+    let reactionTimeout = null; // To control the timeout for showing the reaction
 
     function connectWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -41,6 +42,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function handleIncomingMessage(data) {
+        // When Bob sends a message, clear any existing reaction
+        clearReaction();
+        
         if (data.type === 'user_response') {
             appendMessage(userChatBox, 'Bob', data.content, 'bob');
         } else if (data.type === 'lawyer_request') {
@@ -48,9 +52,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function clearReaction() {
+        if (reactionTimeout) {
+            clearTimeout(reactionTimeout);
+            reactionTimeout = null;
+        }
+        if (lastUserMessageEl) {
+            const reaction = lastUserMessageEl.querySelector('.message-reaction');
+            if (reaction) {
+                reaction.remove();
+            }
+            lastUserMessageEl = null;
+        }
+    }
+
     function appendMessage(chatBox, sender, message, type) {
         const messageDiv = document.createElement('div');
-        messageDiv.className = `p-2 my-2 rounded ${type === 'human' ? 'bg-primary bg-opacity-10' : 'bg-secondary bg-opacity-10'}`;
+        // Determine the correct class for alignment and styling
+        const messageClass = type === 'human' ? 'message-human' : 'message-bob';
+        // Combine structural classes with role-specific class
+        messageDiv.className = `p-3 my-2 rounded message-container ${messageClass}`;
         
         const senderSpan = document.createElement('strong');
         senderSpan.textContent = sender;
@@ -64,13 +85,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
         chatBox.appendChild(messageDiv);
         chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll
+        
+        return messageDiv; // Return the created element
     }
 
     userForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const message = userInput.value;
         if (message.trim() && ws.readyState === WebSocket.OPEN) {
-            appendMessage(userChatBox, 'User', message, 'human');
+            // Clear any previous reaction when a new message is sent
+            clearReaction();
+
+            const messageEl = appendMessage(userChatBox, 'User', message, 'human');
+            lastUserMessageEl = messageEl; // Track this new message element
+
+            // Set a timeout to add the "eyes" reaction
+            reactionTimeout = setTimeout(() => {
+                if (lastUserMessageEl) { // Check if it's still the last message
+                    const reactionEl = document.createElement('div');
+                    reactionEl.className = 'message-reaction';
+                    reactionEl.textContent = '👀';
+                    lastUserMessageEl.appendChild(reactionEl);
+                }
+            }, 1000); // 1-second delay
+
             ws.send(JSON.stringify({ type: 'user_message', content: message }));
             userInput.value = '';
         }
