@@ -67,26 +67,67 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function appendMessage(chatBox, sender, message, type) {
-        const messageDiv = document.createElement('div');
-        // Determine the correct class for alignment and styling
-        const messageClass = type === 'human' ? 'message-human' : 'message-bob';
-        // Combine structural classes with role-specific class
-        messageDiv.className = `p-3 my-2 rounded message-container ${messageClass}`;
-        
-        const senderSpan = document.createElement('strong');
-        senderSpan.textContent = sender;
+        const isHuman = type === 'human';
 
+        // 1. Create the message bubble first, as it's always needed.
+        const messageDiv = document.createElement('div');
+        const messageClass = isHuman ? 'message-human' : 'message-bob';
+        messageDiv.className = `p-3 rounded message-container ${messageClass}`;
+
+        // 2. Populate the bubble with ONLY the message content.
+        // The sender name is now handled outside or omitted.
         const messageP = document.createElement('p');
         messageP.className = 'mb-0';
         messageP.textContent = message;
-
-        messageDiv.appendChild(senderSpan);
         messageDiv.appendChild(messageP);
 
-        chatBox.appendChild(messageDiv);
-        chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll
+        // 3. Decide what to append to the chatbox.
+        let finalElementToAppend;
+        if (isHuman) {
+            // For humans, no sender name is shown. Just wrap for alignment.
+            const row = document.createElement('div');
+            row.className = 'human-message-row';
+
+            const bubbleContainer = document.createElement('div');
+            bubbleContainer.className = 'human-bubble-container';
+            
+            bubbleContainer.appendChild(messageDiv);
+            row.appendChild(bubbleContainer);
+            finalElementToAppend = row;
+        } else {
+            // For Bob, build the wrapper with avatar, name, and bubble.
+            const wrapper = document.createElement('div');
+            wrapper.className = 'message-wrapper';
+
+            // Avatar
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar';
+            avatar.textContent = 'B';
+
+            // Container for name + bubble
+            const bubbleAndNameContainer = document.createElement('div');
+            bubbleAndNameContainer.className = 'bubble-and-name-container';
+
+            // Sender Name (styled, outside the bubble)
+            const senderNameEl = document.createElement('div');
+            senderNameEl.className = 'sender-name';
+            senderNameEl.textContent = sender; // e.g., "Bob"
+
+            // Assemble the name and bubble vertically
+            bubbleAndNameContainer.appendChild(senderNameEl);
+            bubbleAndNameContainer.appendChild(messageDiv);
+
+            // Assemble the final wrapper with avatar
+            wrapper.appendChild(avatar);
+            wrapper.appendChild(bubbleAndNameContainer);
+            finalElementToAppend = wrapper;
+        }
         
-        return messageDiv; // Return the created element
+        chatBox.appendChild(finalElementToAppend);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        
+        // Return the message bubble itself for the reaction logic.
+        return messageDiv;
     }
 
     userForm.addEventListener('submit', (e) => {

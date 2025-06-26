@@ -201,35 +201,86 @@ footer {
     flex-direction: column;
 }
 
+/* Wrapper for avatar and message bubble (NOW ONLY FOR BOB) */
+.message-wrapper {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+    max-width: 80%;
+    gap: 10px;
+    align-self: flex-start;
+}
+
+/* NEW: Container for Bob's name and bubble to stack them vertically */
+.bubble-and-name-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+/* NEW: Style for the sender's name (Bob) displayed above the bubble */
+.sender-name {
+    font-size: 0.8rem;      /* Smaller font size */
+    color: #6c757d;         /* Lighter, secondary text color */
+    margin-bottom: 4px;     /* Space between the name and the bubble */
+    margin-left: 0.75rem;   /* Aligns name visually with bubble's internal padding */
+}
+
+/* New: A wrapper for human messages to push them right */
+.human-message-row {
+    display: flex;
+    justify-content: flex-end; /* This pushes the content to the right edge */
+    width: 100%;
+    margin-bottom: 0.5rem; /* Matches Bob's message spacing */
+}
+
+/* New: A container within the row to control the bubble's max width */
+.human-bubble-container {
+    max-width: 80%; /* This creates the whitespace on the left */
+    width: fit-content; /* Shrink-wraps short messages */
+}
+
+/* Avatar styling (NOW ONLY FOR BOB) */
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    flex-shrink: 0;
+    background-color: #6c757d; /* Secondary color for Bob */
+}
+
 /* Custom styles for chat messages */
 .message-container {
     position: relative;
-    max-width: 95%; /* Messages don't span the full width */
-    word-wrap: break-word; /* Ensure long words don't overflow */
+    word-wrap: break-word;
 }
 
 /* Styles for messages from Bob (AI) - left aligned */
 .message-bob {
-    align-self: flex-start;
-    background-color: #e9ecef; /* A light grey for Bob */
+    background-color: #e9ecef;
     border-radius: 1rem 1rem 1rem 0;
 }
 
 /* Styles for messages from a human - right aligned */
 .message-human {
-    align-self: flex-end;
-    background-color: #cfe2ff; /* A light blue for the user */
+    background-color: #cfe2ff;
     border-radius: 1rem 1rem 0 1rem;
+    /* align-self and max-width are now handled by parent wrappers */
 }
 
 .message-reaction {
     position: absolute;
-    bottom: -8px; /* Position it slightly below the message box */
-    right: 8px;  /* Position it from the right */
+    bottom: -8px;
+    right: 8px;
     font-size: 0.9rem;
-    background-color: #f8f9fa; /* Match the page background */
+    background-color: #f8f9fa;
     border-radius: 10px;
     padding: 1px 6px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1); /* Add a subtle shadow for depth */
-    user-select: none; /* Make it non-selectable */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    user-select: none;
 }

@@ -94,14 +94,6 @@ async def websocket_endpoint(websocket: WebSocket):
         "prepared_briefing": None,
     }
 
-    # Send initial greeting
-    await websocket.send_json(
-        {
-            "type": "user_response",
-            "content": "Hi! I'm Bob. How can I help you today?",
-        }
-    )
-
     try:
         while True:
             data = await websocket.receive_json()
