@@ -352,17 +352,7 @@ def handle_lawyer_response_node(
     # Simple check for approval keywords
     is_approval = any(
         keyword in lawyer_message.lower()
-        for keyword in [
-            "approve",
-            "approved",
-            "yes",
-            "correct",
-            "go ahead",
-            "proceed",
-            "ok",
-            "okay",
-            "do it",
-        ]
+        for keyword in ["i approve", "sure", "this works"]
     )
 
     if is_approval and prepared_briefing:
