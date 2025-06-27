@@ -4,7 +4,6 @@ AI-powered legal contract analysis with risk assessment, conversational Q&A, and
 
 ## Features
 
-- 📄 **Multi-format Support**: Upload and analyze PDF, DOCX, and TXT files.
 - 🔍 **Conversational Q&A**: Ask questions about the contract in natural language.
 - ⚠️ **Intelligent Escalation**: Automatically detects questions requiring human lawyer review and prepares a concise briefing.
 - 📋 **Plain-English Summaries**: Generates business-friendly contract overviews.
