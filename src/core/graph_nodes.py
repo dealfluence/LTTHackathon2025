@@ -166,7 +166,7 @@ FORMAT:
 "User asks: [brief restatement]
 Contract says: [key fact + clause reference]
 My proposed answer: [1 sentence response]
-Is this okay?"
+Can I send this response back?"
 
 EXAMPLES:
 
@@ -174,19 +174,19 @@ Example 1 - Simple Termination Question:
 "User asks: Can Bluefly terminate the IBM agreement early?
 Contract says: Yes, with 1 month notice + early termination charges (Section 3.4)
 My proposed answer: Yes, you can terminate with 30 days' notice but must pay applicable early termination charges.
-Is this okay?"
+Can I send this response back?"
 
 Example 2 - Complex Liability Question:
 "User asks: What's our liability cap under the co-hosting agreement?
 Contract says: Part 1: $15 million cap for direct damages (Section 10). Part 2: Excludes third party claims, lost data, and consequential damages (Sections 9-10)
 My proposed answer: Direct damages are capped at $15 million, but indemnification for patent/copyright infringement and third party claims remain uncapped.
-Is this okay?"
+Can I send this response back?"
 
 Example 3 - Missing Information:
 "User asks: Are non-compete clauses enforceable for the Snotarator distributorship?
 Contract says: Agreement prohibits competitive products (Section 1.04) but no jurisdiction-specific enforceability provisions
 My proposed answer: Need legal guidance - enforceability varies by jurisdiction and isn't specified in the agreement.
-Is this okay?"
+Can I send this response back?"
 
 Contract: {doc_context}
 """,
@@ -370,7 +370,7 @@ RULES:
 - No introductory phrases or explanations
 
 EXAMPLE:
-Briefing: "User asks: Can they terminate early? Contract says: 30-day notice required (Section 5.2) My proposed answer: Yes, early termination allowed with 30-day written notice. Is this okay?"
+Briefing: "User asks: Can they terminate early? Contract says: 30-day notice required (Section 5.2) My proposed answer: Yes, early termination allowed with 30-day written notice. Can I send this response back?"
 Response: "Yes, early termination allowed with 30-day written notice (Section 5.2)."
 """,
                 ),
