@@ -1,5 +1,6 @@
 # Legal Contract Analysis Bot
 
+This repository is at https://github.com/dealfluence/LTTHackathon2025 .
 See https://lumenai.london/ for the demo company page.
 
 AI-powered legal contract analysis with risk assessment, conversational Q&A, and plain-English summaries. This project provides an intelligent assistant to help legal professionals and business stakeholders quickly understand complex contracts.
