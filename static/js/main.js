@@ -40,33 +40,33 @@ async function showStatusProgression(type) {
     // State 1: Initial processing
     currentStatusElement = appendStatusMessage(
       userChatBox,
-      "Bob is analyzing your question"
+      "Lumen AI is analyzing your question"
     );
 
     // State 2: Decision processing (after delay)
     await new Promise((resolve) => setTimeout(resolve, 800));
     updateStatusMessage(
       currentStatusElement,
-      "Bob is checking if this requires review by our Legal Team"
+      "Lumen AI is checking if this requires review by our Legal Team"
     );
   } else if (type === "escalation") {
     // State 3B: Escalation
     await new Promise((resolve) => setTimeout(resolve, 600));
     updateStatusMessage(
       currentStatusElement,
-      "Bob is consulting with our Legal Team"
+      "Lumen AI is consulting with our Legal Team"
     );
   } else if (type === "direct_response") {
     // State 3A: Direct response
     await new Promise((resolve) => setTimeout(resolve, 500));
-    updateStatusMessage(currentStatusElement, "Bob is preparing your response");
+    updateStatusMessage(currentStatusElement, "Lumen AI is preparing your response");
   } else if (type === "contextual_analysis") {
     // Add this new case
     // State 4: Contextual analysis (for both direct and lawyer paths)
     await new Promise((resolve) => setTimeout(resolve, 400));
     updateStatusMessage(
       currentStatusElement,
-      "Bob is checking for related contract information"
+      "Lumen AI is checking for related contract information"
     );
   } else if (type === "lawyer_processing") {
     // State 4: Processing lawyer response
@@ -120,7 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function handleIncomingMessage(data) {
-    // When Bob sends a message, clear any existing reaction
+    // When Lumen AI sends a message, clear any existing reaction
     clearReaction();
 
     if (data.type === "user_response") {
@@ -132,17 +132,17 @@ document.addEventListener("DOMContentLoaded", () => {
         );
         currentStatusElement = null;
       }
-      appendMessage(userChatBox, "Bob", data.content, "bob");
+      appendMessage(userChatBox, "Lumen AI", data.content, "Lumen AI");
     } else if (data.type === "lawyer_request") {
       // Finalize status as "escalated" when lawyer request is sent
       if (currentStatusElement) {
         finalizeStatusMessage(
           currentStatusElement,
-          "Bob consulted with legal counsel"
+          "Lumen AI consulted with legal counsel"
         );
         currentStatusElement = null;
       }
-      appendMessage(lawyerChatBox, "Bob", data.content, "bob");
+      appendMessage(lawyerChatBox, "Lumen AI", data.content, "Lumen AI");
     } else if (data.type === "status_update") {
       // Handle status updates from backend
       if (data.status === "escalation") {
@@ -175,7 +175,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 1. Create the message bubble first, as it's always needed.
     const messageDiv = document.createElement("div");
-    const messageClass = isHuman ? "message-human" : "message-bob";
+    const messageClass = isHuman ? "message-human" : "message-lumen";
     messageDiv.className = `p-3 rounded message-container ${messageClass}`;
 
     // 2. Populate the bubble with ONLY the message content.
@@ -199,7 +199,7 @@ document.addEventListener("DOMContentLoaded", () => {
       row.appendChild(bubbleContainer);
       finalElementToAppend = row;
     } else {
-      // For Bob, build the wrapper with avatar, name, and bubble.
+      // For Lumen AI, build the wrapper with avatar, name, and bubble.
       const wrapper = document.createElement("div");
       wrapper.className = "message-wrapper";
 
@@ -215,7 +215,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Sender Name (styled, outside the bubble)
       const senderNameEl = document.createElement("div");
       senderNameEl.className = "sender-name";
-      senderNameEl.textContent = sender; // e.g., "Bob"
+      senderNameEl.textContent = sender; // e.g., "Lumen AI"
 
       // Assemble the name and bubble vertically
       bubbleAndNameContainer.appendChild(senderNameEl);

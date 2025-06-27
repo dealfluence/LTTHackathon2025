@@ -202,7 +202,7 @@ footer {
     max-height: 70vh;
 }
 
-/* Wrapper for avatar and message bubble (NOW ONLY FOR BOB) */
+/* Wrapper for avatar and message bubble (NOW ONLY FOR Lumen AI) */
 .message-wrapper {
     display: flex;
     align-items: flex-start;
@@ -212,14 +212,14 @@ footer {
     align-self: flex-start;
 }
 
-/* NEW: Container for Bob's name and bubble to stack them vertically */
+/* NEW: Container for Lumen AI's name and bubble to stack them vertically */
 .bubble-and-name-container {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
 }
 
-/* NEW: Style for the sender's name (Bob) displayed above the bubble */
+/* NEW: Style for the sender's name (Lumen AI) displayed above the bubble */
 .sender-name {
     font-size: 0.8rem;      /* Smaller font size */
     color: #6c757d;         /* Lighter, secondary text color */
@@ -232,7 +232,7 @@ footer {
     display: flex;
     justify-content: flex-end; /* This pushes the content to the right edge */
     width: 100%;
-    margin-bottom: 0.5rem; /* Matches Bob's message spacing */
+    margin-bottom: 0.5rem; /* Matches Lumen AI's message spacing */
 }
 
 /* New: A container within the row to control the bubble's max width */
@@ -241,7 +241,7 @@ footer {
     width: fit-content; /* Shrink-wraps short messages */
 }
 
-/* Avatar styling (NOW ONLY FOR BOB) */
+/* Avatar styling (NOW ONLY FOR Lumen AI) */
 .avatar {
     width: 40px;
     height: 40px;
@@ -252,7 +252,7 @@ footer {
     justify-content: center;
     font-weight: bold;
     flex-shrink: 0;
-    background-color: #6c757d; /* Secondary color for Bob */
+    background-color: #6c757d; /* Secondary color for Lumen AI */
 }
 
 /* Custom styles for chat messages */
@@ -261,8 +261,8 @@ footer {
     word-wrap: break-word;
 }
 
-/* Styles for messages from Bob (AI) - left aligned */
-.message-bob {
+/* Styles for messages from Lumen AI (AI) - left aligned */
+.message-lumen {
     background-color: #e9ecef;
     border-radius: 1rem 1rem 1rem 0;
 }

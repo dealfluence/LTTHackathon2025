@@ -1,4 +1,4 @@
-# Escalation Rules for Legal Bot "Bob"
+# Escalation Rules for Legal Bot "Lumen"
 #
 # If the user's query mentions any of the following topics or intents,
 # the query MUST be escalated to a human lawyer.
