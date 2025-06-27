@@ -199,6 +199,7 @@ footer {
 #user-chat-box, #lawyer-chat-box {
     display: flex;
     flex-direction: column;
+    max-height: 70vh;
 }
 
 /* Wrapper for avatar and message bubble (NOW ONLY FOR BOB) */
