@@ -41,6 +41,23 @@ def escalation_router_node(
 You must follow these rules for escalation:
 {escalation_rules}
 
+EXAMPLES:
+
+Example 1 - ESCALATE (keyword match):
+User: "What are our indemnity obligations under the IBM hosting agreement?"
+Decision: escalate_to_lawyer
+Reason: Contains "indemnity" which is an escalation keyword
+
+Example 2 - ANSWER DIRECTLY (simple factual):
+User: "What's the notice period for terminating our co-hosting agreement with Network Associates?"
+Decision: answer_directly
+Reason: Simple factual question about contract terms
+
+Example 3 - ANSWER DIRECTLY (sounds complex but is factual):
+User: "If we miss a payment under the Snotarator distribution agreement, what happens?"
+Decision: answer_directly
+Reason: Asking about contract terms for late payment, not about breach/litigation
+
 Based on the user's latest message and the conversation history, decide whether to "answer_directly" or "escalate_to_lawyer".
 """,
             ),
@@ -84,7 +101,7 @@ def generate_direct_answer_node(
         [
             (
                 "system",
-                """You are Lumen AI, a legal assistant. Give direct, concise answers using only the contract information provided. If you don't have sufficient information (from the user query) ask clarification questions before esclating the issue.
+                """You are Lumen AI, a legal assistant. Give direct, concise answers using only the contract information provided. If you don't have sufficient information ask clarification questions before escalating the issue.
 
 RESPONSE STYLE:
 - Ask clarificatory questions before launching into an answer
@@ -93,15 +110,25 @@ RESPONSE STYLE:
 - Include the relevant clause reference in parentheses
 - Use natural, conversational language (avoid legal jargon or, if it's unavoidable, include a brief explainer in simple terms)
 - No bullet points, special formatting, or section headers
-- Offer the user an opportunity to ask for more detail 
+- Offer the user an opportunity to ask for more detail
 
 EXAMPLES:
-- "Yes, you can terminate with 30-day written notice (Section 5.2)."
-- "Payment is due within 15 days of invoice date (Section 3.1)."
-- "No, confidentiality obligations continue for 2 years post-termination (Section 8.3)."
 
-If the answer isn't in the contract, say: "I don't see that information in the documentation I have access to. Can you tell me a bit more about your issue so I can escalate it to our Legal Team?"
+Example 1 - Simple Answer:
+User: "How long is the term of the IBM hosting agreement?"
+Response: "The IBM hosting agreement term ends when all Service Option Attachments expire, unless terminated earlier (Section 3.1). Would you like to know if the contract autorenews?"
 
+Example 2 - Clarification Needed:
+User: "Can we change the co-hosting fee?"
+Response: "I need more details - are you asking about the quarterly payments of $312,500 or the initial $2.5 million payment in the Network Associates agreement? This will help me find the right provision."
+
+Example 3 - Information Not Available:
+User: "What's the process for adding subsidiaries to the joint filing agreement?"
+Response: "I don't see specific provisions about adding subsidiaries in the HPS joint filing agreement. Can you tell me more about what you're trying to accomplish so I can escalate it to our Legal Team?"
+
+Example 4 - Clarification Needed:
+User: Can we (as IBM) share our co-hosting agreement with a third party vendor we need to use to deliver the services?
+Response: Is the vendor you're referring to integral to IBM's delivery of services to BlueFly Inc? If so, then section 14.6 of the co-hosting agreement permits you to do this (without prior consent from BlueFly Inc). Would you like me to check if other conditions apply (e.g. ensuring the relevant vendor complies with the co-hosting agreement)?
 Contract: {doc_context}
 """,
             ),
@@ -139,16 +166,27 @@ FORMAT:
 "User asks: [brief restatement]
 Contract says: [key fact + clause reference]
 My proposed answer: [1 sentence response]
-Any concerns?"
+Is this okay?"
 
-EXAMPLE:
-"User asks: Can they terminate early?
-Contract says: 30-day notice required, no penalty (Section 5.2)
-My proposed answer: Yes, early termination allowed with 30-days' written notice.
-Any concerns?"
+EXAMPLES:
 
-Keep it short - lawyers don't have time for lengthy briefings. 
-Where an answer needs to be more detailed because of query complexity (e.g. regarding indemnities or liability), split the draft response into two parts: first part should focus on provisions directly relevant to the user query (e.g. for a question about liability caps, focus on aggregate caps and super caps) and then, in the second part, summarise closely connected concepts/provisions (e.g. liabilities that are uncapped - such as those covered by indemnity) so that the lawyer can decide whether to return a fuller response to the user. 
+Example 1 - Simple Termination Question:
+"User asks: Can Bluefly terminate the IBM agreement early?
+Contract says: Yes, with 1 month notice + early termination charges (Section 3.4)
+My proposed answer: Yes, you can terminate with 30 days' notice but must pay applicable early termination charges.
+Is this okay?"
+
+Example 2 - Complex Liability Question:
+"User asks: What's our liability cap under the co-hosting agreement?
+Contract says: Part 1: $15 million cap for direct damages (Section 10). Part 2: Excludes third party claims, lost data, and consequential damages (Sections 9-10)
+My proposed answer: Direct damages are capped at $15 million, but indemnification for patent/copyright infringement and third party claims remain uncapped.
+Is this okay?"
+
+Example 3 - Missing Information:
+"User asks: Are non-compete clauses enforceable for the Snotarator distributorship?
+Contract says: Agreement prohibits competitive products (Section 1.04) but no jurisdiction-specific enforceability provisions
+My proposed answer: Need legal guidance - enforceability varies by jurisdiction and isn't specified in the agreement.
+Is this okay?"
 
 Contract: {doc_context}
 """,
@@ -242,6 +280,23 @@ RULES:
 - Focus on deadlines, penalties, or connected obligations
 - If nothing important to add, respond with exactly: "NO_ENHANCEMENT_NEEDED"
 
+EXAMPLES:
+
+Example 1 - Enhancement Needed:
+User Query: "When do we need to pay IBM for hosting services?"
+Base Response: "Payment is due upon receipt of invoice (Section 4.2)."
+Enhanced Response: "Payment is due upon receipt of invoice (Section 4.2). Note that late payments incur fees as specified in the invoice terms."
+
+Example 2 - No Enhancement Needed:
+User Query: "What's the term of the Snotarator distribution agreement?"
+Base Response: "The agreement runs until May 31, 2015 (Section 6.01)."
+Enhanced Response: "NO_ENHANCEMENT_NEEDED"
+
+Example 3 - Warranty Enhancement:
+User Query: "What warranty does Network Associates provide?"
+Base Response: "NAI warrants Products are free from defects for 90 days (Section 5.01)."
+Enhanced Response: "NAI warrants Products are free from defects for 90 days (Section 5.01), and this is the sole warranty - no implied warranties of merchantability or fitness apply."
+
 User asked: {user_message}
 
 Current response: {base_response}
@@ -297,7 +352,17 @@ def handle_lawyer_response_node(
     # Simple check for approval keywords
     is_approval = any(
         keyword in lawyer_message.lower()
-        for keyword in ["approve", "approved", "yes", "correct", "go ahead", "proceed"]
+        for keyword in [
+            "approve",
+            "approved",
+            "yes",
+            "correct",
+            "go ahead",
+            "proceed",
+            "ok",
+            "okay",
+            "do it",
+        ]
     )
 
     if is_approval and prepared_briefing:
@@ -315,7 +380,7 @@ RULES:
 - No introductory phrases or explanations
 
 EXAMPLE:
-Briefing: "User asks: Can they terminate early? Contract says: 30-day notice required (Section 5.2) My proposed answer: Yes, early termination allowed with 30-day written notice. Any concerns?"
+Briefing: "User asks: Can they terminate early? Contract says: 30-day notice required (Section 5.2) My proposed answer: Yes, early termination allowed with 30-day written notice. Is this okay?"
 Response: "Yes, early termination allowed with 30-day written notice (Section 5.2)."
 """,
                 ),
@@ -339,6 +404,21 @@ RULES:
 - Include clause references when mentioned
 - Sound professional but human
 - Don't add "the lawyer says" or similar phrases
+
+EXAMPLES:
+
+Example 1 - Simple Approval:
+Lawyer: "Approved"
+Escalated Question: "Can we terminate the IBM agreement early?"
+Response: "Yes, you can terminate with 30 days' written notice, but you'll need to pay the early termination charges specified in Section 3.4."
+
+Example 2 - Correction/Addition:
+Lawyer: "Correct but add that co-hosting fee changes require mutual agreement"
+Response: "The quarterly co-hosting payments of $312,500 are fixed, and any changes would require mutual written agreement between you and Network Associates (Section 13.3)."
+
+Example 3 - Complex Guidance:
+Lawyer: "The distributor agreement is exclusive for South America only. They can't assign without consent per Section 1.01. Competitive products restriction applies to all nasal aspirators."
+Response: "Your Snotarator distributorship is exclusive for all South American countries and territories (Section 1.01). The agreement can't be assigned without written consent, and you're prohibited from selling any competing nasal aspirator products during the term."
 
 The lawyer has provided guidance on: {escalated_question}
 Lawyer's guidance: {lawyer_guidance}
