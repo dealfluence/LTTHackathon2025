@@ -1,30 +1,68 @@
-# Legal Contract Analysis Bot - Web Interface
+# Legal Contract Analysis Bot
 
-AI-powered legal contract analysis with risk assessment and plain-English summaries.
+AI-powered legal contract analysis with risk assessment, conversational Q&A, and plain-English summaries. This project provides an intelligent assistant to help legal professionals and business stakeholders quickly understand complex contracts.
 
 ## Features
 
-- 📄 **Multi-format Support**: PDF, DOCX, and TXT files
-- 🔍 **Clause Extraction**: Automatically identifies key contract clauses
-- ⚠️ **Risk Assessment**: Evaluates legal risks based on organizational rules
-- 📋 **Plain-English Summaries**: Business-friendly contract overviews
-- 🌐 **Web Interface**: Easy-to-use browser-based UI
-- 💾 **Local Storage**: Secure local data persistence
+- 📄 **Multi-format Support**: Upload and analyze PDF, DOCX, and TXT files.
+- 🔍 **Conversational Q&A**: Ask questions about the contract in natural language.
+- ⚠️ **Intelligent Escalation**: Automatically detects questions requiring human lawyer review and prepares a concise briefing.
+- 📋 **Plain-English Summaries**: Generates business-friendly contract overviews.
+- 🌐 **Web Interface**: Easy-to-use browser-based UI for analysis and chat.
+- 💾 **Local Storage**: Securely persists analysis results and conversations locally.
 
-## Quick Start
+## Prerequisites
 
-### 1. Setup
+Before you begin, ensure you have the following installed on your system:
+- [Python](https://www.python.org/downloads/) (Version 3.12 or higher)
+- [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
+- `pip` (Python package installer)
+
+## Installation & Setup
+
+Follow these steps to get the application running on your local machine.
+
+### 1. Clone the Repository
+Open your terminal and clone the project repository:
 ```bash
-# Clone the repository
 git clone <repository-url>
 cd legal-contract-bot
+```
 
-# Run setup script
+### 2. Run the Setup Script
+The project includes a setup script to create necessary directories and configuration files.
+```bash
 python setup.py
+```
+This will create data directories, a .gitignore file, and a .env file for your API keys.
 
-# Install dependencies
+### 3. Configure Environment Variables
+The setup script creates a file named .env in the project's root directory. You must edit this file to add your API key.
+Open the .env file and replace your_google_api_key_here with your actual Google AI API key.
+
+### 4. Install Dependencies
+
+Install the required Python packages using the provided requirements file:
+```bash
 pip install -r requirements/web.txt
 ```
+## Usage
+
+Once the setup is complete and dependencies are installed, you can run the web application.
+
+### 1. Start the Web Server
+
+From the root directory of the project, run:
+
+```bash
+python run_web.py
+```
+
+You should see output indicating the server has started, typically on http://localhost:8000.
+
+### 2. Access the Application
+
+Open your web browser and navigate to http://localhost:8000.
 
 # Legal Bot LangGraph State Machine - Detailed Explanation
 
