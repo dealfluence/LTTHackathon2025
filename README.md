@@ -1,5 +1,7 @@
 # Legal Contract Analysis Bot
 
+See http://lumenai.london/ for the demo company page.
+
 AI-powered legal contract analysis with risk assessment, conversational Q&A, and plain-English summaries. This project provides an intelligent assistant to help legal professionals and business stakeholders quickly understand complex contracts.
 
 ## Features
