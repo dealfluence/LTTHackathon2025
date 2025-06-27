@@ -5,7 +5,8 @@ python-multipart
 aiofiles
 langgraph
 langchain
-langchain-google-genai
+langchain-google-genai==2.1.3
+google-ai-generativelanguage==0.6.17
 pydantic
 python-dotenv
 pyyaml

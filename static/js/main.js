@@ -47,14 +47,14 @@ async function showStatusProgression(type) {
     await new Promise((resolve) => setTimeout(resolve, 800));
     updateStatusMessage(
       currentStatusElement,
-      "Bob is checking if this requires legal review"
+      "Bob is checking if this requires review by our Legal Team"
     );
   } else if (type === "escalation") {
     // State 3B: Escalation
     await new Promise((resolve) => setTimeout(resolve, 600));
     updateStatusMessage(
       currentStatusElement,
-      "Bob is consulting with legal counsel"
+      "Bob is consulting with our Legal Team"
     );
   } else if (type === "direct_response") {
     // State 3A: Direct response
@@ -66,13 +66,13 @@ async function showStatusProgression(type) {
     await new Promise((resolve) => setTimeout(resolve, 400));
     updateStatusMessage(
       currentStatusElement,
-      "Bob is checking for related contract details"
+      "Bob is checking for related contract information"
     );
   } else if (type === "lawyer_processing") {
     // State 4: Processing lawyer response
     currentStatusElement = appendStatusMessage(
       userChatBox,
-      "Bob is incorporating legal guidance into your response"
+      " incorporating our Legal Team's guidance into your response"
     );
   }
 }
