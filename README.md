@@ -24,6 +24,7 @@ python setup.py
 
 # Install dependencies
 pip install -r requirements/web.txt
+```
 
 # Legal Bot LangGraph State Machine - Detailed Explanation
 
