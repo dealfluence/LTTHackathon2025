@@ -1,3 +1,4 @@
+import time
 from typing import Literal
 
 from langchain_core.messages import HumanMessage, AIMessage
@@ -61,7 +62,8 @@ Reason: Asking about contract terms for late payment, not about breach/litigatio
 Based on the user's latest message and the conversation history, decide whether to "answer_directly" or "escalate_to_lawyer".
 """,
             ),
-            ("user", "Conversation History:\n{history}\n\nUser Query: {query}"),
+            *history,
+            ("user", "User Query: {query}"),
         ]
     )
 
@@ -71,7 +73,6 @@ Based on the user's latest message and the conversation history, decide whether 
     response = chain.invoke(
         {
             "escalation_rules": escalation_rules,
-            "history": "\n".join([f"{msg.type}: {msg.content}" for msg in history]),
             "query": user_message,
         }
     )
@@ -136,6 +137,7 @@ Contract: {doc_context}
             ("user", "{query}"),
         ]
     )
+
     chain = prompt | llm
     response = chain.invoke({"doc_context": doc_context, "query": user_message})
 
@@ -194,6 +196,7 @@ Contract: {doc_context}
             ("human", "User Query: {query}"),
         ]
     )
+
     chain = prompt | llm
     briefing = chain.invoke({"doc_context": doc_context, "query": user_message}).content
 
@@ -377,9 +380,11 @@ Response: "Yes, early termination allowed with 30-day written notice (Section 5.
                 ("user", "Briefing: {briefing}"),
             ]
         )
+
         chain = prompt | llm
         response = chain.invoke({"briefing": prepared_briefing})
         final_response_content = response.content
+
     else:
         # Lawyer provided corrections or a new answer
         prompt = ChatPromptTemplate.from_messages(
@@ -420,6 +425,7 @@ Lawyer's guidance: {lawyer_guidance}
                 ),
             ]
         )
+
         chain = prompt | llm
         response = chain.invoke(
             {
