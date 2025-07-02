@@ -23,16 +23,25 @@ if __name__ == "__main__":
     config = ConfigManager()
     web_config = config.get_web_config()
 
+    # Use Railway's PORT environment variable if available, otherwise default
+    port = int(os.environ.get("PORT", web_config.get("port", 8000)))
+    host = "0.0.0.0"  # Important: bind to all interfaces for Railway
+
+    # Determine if we're in production
+    is_production = os.environ.get("RAILWAY_ENVIRONMENT_NAME") is not None
+
     print("🚀 Starting Legal Contract Analysis Bot Web Interface...")
     print(f"📁 Configuration loaded from: config/config.yaml")
+    print(f"🌐 Server will start at: http://{host}:{port}")
     print(
-        f"🌐 Server will start at: http://{web_config.get('host', '0.0.0.0')}:{web_config.get('port', 8000)}"
+        f"🔧 Environment: {'Production (Railway)' if is_production else 'Development'}"
     )
+
     # Run the FastAPI application
     uvicorn.run(
         "implementations.web.main:app",
-        host=web_config.get("host", "0.0.0.0"),
-        port=web_config.get("port", 8000),
-        reload=web_config.get("reload", True),
+        host=host,
+        port=port,
+        reload=False if is_production else web_config.get("reload", True),
         log_level="info",
     )
