@@ -6,10 +6,15 @@ __pycache__/
 # Environment variables
 .env
 
-# Data and uploads
-data/
+# Data and uploads (but keep knowledge_base)
+data/analyses/
+data/uploads/
 logs/
 *.log
+
+# Allow knowledge_base to be tracked
+!data/knowledge_base/
+!data/knowledge_base/**
 
 # Virtual environment
 venv/
