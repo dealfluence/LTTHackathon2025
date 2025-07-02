@@ -80,7 +80,7 @@ def create_conversational_graph(
         get_entry_point,
         {
             "router": "router",
-            "lawyer_feedback_router": "lawyer_feedback_router",  # CHANGED: was "handle_lawyer_response"
+            "lawyer_feedback_router": "lawyer_feedback_router",
         },
     )
     workflow.add_conditional_edges(

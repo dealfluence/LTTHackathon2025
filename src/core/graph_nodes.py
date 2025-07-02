@@ -400,6 +400,7 @@ def contextual_enhancement_node(
         print("Error: No base_response found in state")
         return {
             "response_to_user": "An error occurred processing your request.",
+            "conversation_history": history,
             "base_response": None,
             "escalated_question": None,
             "prepared_briefing": None,
@@ -411,6 +412,7 @@ def contextual_enhancement_node(
         )
         return {
             "response_to_user": base_response,
+            "conversation_history": history,
             "base_response": None,
             "escalated_question": None,
             "prepared_briefing": None,
@@ -425,6 +427,7 @@ def contextual_enhancement_node(
         print("Warning: Empty user_message or base_response - returning base response")
         return {
             "response_to_user": base_response,
+            "conversation_history": history,
             "base_response": None,
             "escalated_question": None,
             "prepared_briefing": None,
@@ -437,45 +440,65 @@ def contextual_enhancement_node(
         )
 
     try:
-        # Create a concise enhancement prompt
-        full_prompt = f"""Look at this response and see if there's one important related detail from the contract that the user should know. Only add it if it's directly relevant and actionable.
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    """You are a legal AI assistant providing contextual enhancement to contract-related responses. Your role is to add only simple, factual contract details that are directly relevant to the user's question.
 
-RULES:
+CRITICAL RESPONSIBILITIES:
+- Only add straightforward contractual facts (dates, amounts, deadlines, basic obligations)
+- DO NOT add anything requiring legal interpretation, judgment, or analysis
+- DO NOT add information about complex legal concepts, liability, indemnification, or dispute resolution
+- If the enhancement would require legal expertise to interpret, respond with "NO_ENHANCEMENT_NEEDED"
+- Focus only on operational details the user should know
+
+ENHANCEMENT RULES:
 - Only enhance if there's something genuinely important they should know
 - Add context naturally to the existing response
 - Keep additions brief - one short sentence max
-- Focus on deadlines, penalties, or connected obligations
+- Focus on deadlines, payment amounts, notice periods, or basic procedural requirements
 - If nothing important to add, respond with exactly: "NO_ENHANCEMENT_NEEDED"
 
 EXAMPLES:
 
-Example 1 - Enhancement Needed:
+Example 1 - Safe Enhancement:
 User Query: "When do we need to pay IBM for hosting services?"
 Base Response: "Payment is due upon receipt of invoice (Section 4.2)."
 Enhanced Response: "Payment is due upon receipt of invoice (Section 4.2). Note that late payments incur fees as specified in the invoice terms."
 
-Example 2 - No Enhancement Needed:
-User Query: "What's the term of the Snotarator distribution agreement?"
-Base Response: "The agreement runs until May 31, 2015 (Section 6.01)."
+Example 2 - No Enhancement (too complex):
+User Query: "What are our liability limits?"
+Base Response: "Direct damages are capped at $15 million (Section 10)."
 Enhanced Response: "NO_ENHANCEMENT_NEEDED"
 
-Example 3 - Warranty Enhancement:
-User Query: "What warranty does Network Associates provide?"
-Base Response: "NAI warrants Products are free from defects for 90 days (Section 5.01)."
-Enhanced Response: "NAI warrants Products are free from defects for 90 days (Section 5.01), and this is the sole warranty - no implied warranties of merchantability or fitness apply."
-
-User asked: {user_message}
+Example 3 - Safe Enhancement:
+User Query: "What's the notice period for termination?"
+Base Response: "30 days written notice is required (Section 3.4)."
+Enhanced Response: "30 days written notice is required (Section 3.4), and notice must be sent to the address specified in Section 12.1."
+""",
+                ),
+                (
+                    "user",
+                    """User asked: {user_message}
 
 Current response: {base_response}
 
 Contract details: {doc_context}
 
-Enhance the response with one relevant detail if beneficial, otherwise respond "NO_ENHANCEMENT_NEEDED"."""
+Enhance the response with one relevant factual detail if beneficial, otherwise respond "NO_ENHANCEMENT_NEEDED".""",
+                ),
+            ]
+        )
 
-        # Use the LLM directly with a simple message structure
-        from langchain_core.messages import HumanMessage
-
-        response = llm.invoke([HumanMessage(content=full_prompt)])
+        chain = prompt | llm
+        response = chain.invoke(
+            {
+                "user_message": user_message,
+                "base_response": base_response,
+                "doc_context": doc_context,
+            }
+        )
 
         # Check if enhancement was deemed necessary
         if response.content.strip() == "NO_ENHANCEMENT_NEEDED":
@@ -485,6 +508,7 @@ Enhance the response with one relevant detail if beneficial, otherwise respond "
 
         return {
             "response_to_user": final_response,
+            "conversation_history": history,
             "base_response": None,
             "escalated_question": None,
             "prepared_briefing": None,
@@ -498,6 +522,7 @@ Enhance the response with one relevant detail if beneficial, otherwise respond "
         # If there's an error, just return the base response and clear state
         return {
             "response_to_user": base_response,
+            "conversation_history": history,
             "base_response": None,
             "escalated_question": None,
             "prepared_briefing": None,
