@@ -15,7 +15,8 @@ RUN pip install --no-cache-dir -r requirements/web.txt
 # Copy the entire application
 COPY . .
 
-
+# Create necessary directories (in case they don't exist)
+RUN mkdir -p data/uploads data/analyses logs static/css static/js
 
 # Expose the port that Railway will use
 EXPOSE 8000
