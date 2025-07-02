@@ -4,11 +4,13 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 from .conversation_state import ConversationState
 from .graph_nodes import (
+    approve_briefing_node,
     escalation_router_node,
     generate_direct_answer_node,
     generate_lawyer_briefing_node,
-    handle_lawyer_response_node,
     contextual_enhancement_node,
+    lawyer_feedback_router_node,
+    process_corrections_node,
 )
 
 
@@ -21,10 +23,16 @@ def should_escalate(state: dict) -> str:
     )
 
 
+def route_lawyer_feedback(state: dict) -> str:
+    """Conditional edge to route lawyer feedback based on type."""
+    feedback_type = state.get("lawyer_feedback_type", "provide_corrections")
+    return feedback_type
+
+
 def get_entry_point(state: dict) -> str:
     """Conditional entry point for user vs. lawyer messages."""
     if state.get("lawyer_message"):
-        return "handle_lawyer_response"
+        return "lawyer_feedback_router"
     return "router"
 
 
@@ -46,10 +54,14 @@ def create_conversational_graph(
     briefing_node = partial(
         generate_lawyer_briefing_node, llm=llm, doc_context=doc_context
     )
-    lawyer_response_node = partial(
-        handle_lawyer_response_node, llm=llm, doc_context=doc_context
+    # NEW: Lawyer feedback nodes
+    lawyer_router_node = partial(lawyer_feedback_router_node, llm=llm)
+    approve_node = partial(approve_briefing_node, llm=llm)
+    corrections_node = partial(
+        process_corrections_node, llm=llm, doc_context=doc_context
     )
-    contextual_node = partial(  # Add this new node
+
+    contextual_node = partial(
         contextual_enhancement_node, llm=llm, doc_context=doc_context
     )
 
@@ -57,7 +69,10 @@ def create_conversational_graph(
     workflow.add_node("router", router_node)
     workflow.add_node("answer", answer_node)
     workflow.add_node("generate_briefing", briefing_node)
-    workflow.add_node("handle_lawyer_response", lawyer_response_node)
+    # NEW: Replace handle_lawyer_response with router + handlers
+    workflow.add_node("lawyer_feedback_router", lawyer_router_node)
+    workflow.add_node("approve_briefing", approve_node)
+    workflow.add_node("provide_corrections", corrections_node)
     workflow.add_node("contextual_enhancement", contextual_node)
 
     # Define the graph's topology
@@ -65,10 +80,9 @@ def create_conversational_graph(
         get_entry_point,
         {
             "router": "router",
-            "handle_lawyer_response": "handle_lawyer_response",
+            "lawyer_feedback_router": "lawyer_feedback_router",  # CHANGED: was "handle_lawyer_response"
         },
     )
-
     workflow.add_conditional_edges(
         "router",
         should_escalate,
@@ -78,11 +92,22 @@ def create_conversational_graph(
         },
     )
 
-    # All paths lead to the end after processing
-    workflow.add_edge("answer", "contextual_enhancement")
-    workflow.add_edge("handle_lawyer_response", "contextual_enhancement")
+    # NEW: Lawyer feedback routing
+    workflow.add_conditional_edges(
+        "lawyer_feedback_router",
+        route_lawyer_feedback,
+        {
+            "approve_briefing": "approve_briefing",
+            "provide_corrections": "provide_corrections",
+        },
+    )
 
-    # Only the briefing goes directly to END (no contextual analysis needed for escalation message)
+    # All paths lead to contextual enhancement
+    workflow.add_edge("answer", "contextual_enhancement")
+    workflow.add_edge("approve_briefing", "contextual_enhancement")
+    workflow.add_edge("provide_corrections", "contextual_enhancement")
+
+    # Only the briefing goes directly to END
     workflow.add_edge("generate_briefing", END)
 
     # Final enhanced response goes to END

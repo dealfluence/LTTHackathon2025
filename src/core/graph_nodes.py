@@ -1,6 +1,4 @@
-import time
 from typing import Literal
-
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
@@ -23,6 +21,172 @@ class RouteDecision(BaseModel):
     decision: Literal["answer_directly", "escalate_to_lawyer"] = Field(
         description="The decision to either answer the user directly or escalate to a human lawyer."
     )
+
+
+class LawyerFeedbackDecision(BaseModel):
+    feedback_type: Literal["approve_briefing", "provide_corrections"] = Field(
+        description="Whether the lawyer approved the briefing or provided corrections"
+    )
+    extracted_suggestions: str = Field(
+        description="Any corrections, modifications, or additional guidance from the lawyer"
+    )
+
+
+def lawyer_feedback_router_node(state: dict, llm: ChatGoogleGenerativeAI):
+    """Routes lawyer feedback based on whether it's approval or corrections."""
+    lawyer_message = state["lawyer_message"]
+    prepared_briefing = state.get("prepared_briefing", "")
+
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                """Analyze the lawyer's response to determine if they are approving the original briefing or providing corrections/modifications.
+
+APPROVAL indicators: "approved", "looks good", "send it", "this works", "correct", "yes", "okay", "fine"
+CORRECTIONS indicators: "change", "modify", "add", "remove", "actually", "instead", "but", "however", "no"
+
+If the response contains ANY corrections, modifications, or additional guidance, classify as "provide_corrections".
+Only classify as "approve_briefing" if it's clearly just approval with no changes.
+
+Extract any corrections or suggestions the lawyer provided, even if they also approved parts of the briefing.""",
+            ),
+            (
+                "user",
+                """Original briefing: {briefing}
+
+Lawyer response: {lawyer_response}""",
+            ),
+        ]
+    )
+
+    structured_llm = llm.with_structured_output(LawyerFeedbackDecision)
+    chain = prompt | structured_llm
+
+    response = chain.invoke(
+        {
+            "briefing": prepared_briefing,
+            "lawyer_response": lawyer_message,
+        }
+    )
+
+    return {
+        "lawyer_feedback_type": response.feedback_type,
+        "lawyer_suggestions": response.extracted_suggestions,
+    }
+
+
+def approve_briefing_node(state: dict, llm: ChatGoogleGenerativeAI):
+    """Handles approved briefings by formatting the original prepared answer."""
+    prepared_briefing = state.get("prepared_briefing", "")
+    lawyer_suggestions = state.get("lawyer_suggestions", "")
+    history = state["conversation_history"]
+
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                """Extract and format the proposed answer from this approved legal briefing for the user.
+
+RULES:
+- Use the exact proposed answer from the briefing
+- Keep it conversational and direct
+- Include clause references
+- If the lawyer provided minor comments, incorporate them naturally
+- No introductory phrases about lawyer approval
+
+EXAMPLE:
+Briefing: "User asks: Can they terminate early? Contract says: 30-day notice required (Section 5.2) My proposed answer: Yes, early termination allowed with 30-day written notice. Is this okay?"
+Lawyer: "Approved, but mention the penalty"
+Response: "Yes, early termination is allowed with 30-day written notice, though early termination charges will apply (Section 5.2)." """,
+            ),
+            (
+                "user",
+                """Approved briefing: {briefing}
+
+Any additional lawyer comments: {suggestions}""",
+            ),
+        ]
+    )
+
+    chain = prompt | llm
+    response = chain.invoke(
+        {
+            "briefing": prepared_briefing,
+            "suggestions": lawyer_suggestions,
+        }
+    )
+
+    return {
+        "base_response": response.content,
+        "conversation_history": history + [AIMessage(content=response.content)],
+    }
+
+
+def process_corrections_node(
+    state: dict, llm: ChatGoogleGenerativeAI, doc_context: str
+):
+    """Processes lawyer corrections and synthesizes them into user response."""
+    lawyer_message = state["lawyer_message"]
+    lawyer_suggestions = state.get("lawyer_suggestions", "")
+    escalated_question = state.get("escalated_question", "")
+    history = state["conversation_history"]
+
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                """Convert the lawyer's corrections and guidance into a clear response for the user.
+
+RULES:
+- Present the lawyer's guidance naturally and conversationally
+- Acknowledge when information has been clarified by legal review
+- Include clause references when provided
+- Don't say "the lawyer says" - just present the information
+- If corrections contradict the original briefing, use the lawyer's version
+
+EXAMPLES:
+
+Example 1 - Simple Correction:
+Original question: "Can we terminate the IBM agreement early?"
+Lawyer correction: "Yes but add that notice must be written and sent to the specified address"
+Response: "Yes, you can terminate early with 30 days written notice sent to IBM's designated address, plus applicable termination charges (Section 3.4)."
+
+Example 2 - Complex Guidance:
+Original question: "What are our liability limits?"
+Lawyer correction: "The cap only applies to direct damages. Indirect damages and IP indemnification are unlimited. Also mention the mutual nature."
+Response: "Direct damages are capped at $15 million for both parties, but this doesn't cover indirect damages or intellectual property indemnification, which remain unlimited (Sections 9-10)."
+
+Contract context: {doc_context}
+""",
+            ),
+            (
+                "user",
+                """Original question: {question}
+
+Lawyer's corrections/guidance: {corrections}
+
+Additional context: {suggestions}
+
+""",
+            ),
+        ]
+    )
+
+    chain = prompt | llm
+    response = chain.invoke(
+        {
+            "question": escalated_question,
+            "corrections": lawyer_message,
+            "suggestions": lawyer_suggestions,
+            "doc_context": doc_context,
+        }
+    )
+
+    return {
+        "base_response": response.content,
+        "conversation_history": history + [AIMessage(content=response.content)],
+    }
 
 
 def escalation_router_node(
@@ -338,104 +502,3 @@ Enhance the response with one relevant detail if beneficial, otherwise respond "
             "escalated_question": None,
             "prepared_briefing": None,
         }
-
-
-def handle_lawyer_response_node(
-    state: dict, llm: ChatGoogleGenerativeAI, doc_context: str
-):
-    """
-    Handles the lawyer's response, either by reformatting an approved briefing
-    or synthesizing a new answer based on corrections.
-    """
-    lawyer_message = state["lawyer_message"]
-    prepared_briefing = state.get("prepared_briefing")
-    escalated_question = state.get("escalated_question")
-    history = state["conversation_history"]
-
-    # Simple check for approval keywords
-    is_approval = any(
-        keyword in lawyer_message.lower()
-        for keyword in ["i approve", "sure", "this works"]
-    )
-
-    if is_approval and prepared_briefing:
-        # Lawyer approved the pre-generated briefing - extract the proposed answer
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                (
-                    "system",
-                    """Extract the proposed answer from this legal briefing and present it naturally to the user.
-
-RULES:
-- Use the exact proposed answer from the briefing
-- Keep it conversational and direct
-- Include clause references
-- No introductory phrases or explanations
-
-EXAMPLE:
-Briefing: "User asks: Can they terminate early? Contract says: 30-day notice required (Section 5.2) My proposed answer: Yes, early termination allowed with 30-day written notice. Is this okay?"
-Response: "Yes, early termination allowed with 30-day written notice (Section 5.2)."
-""",
-                ),
-                ("user", "Briefing: {briefing}"),
-            ]
-        )
-
-        chain = prompt | llm
-        response = chain.invoke({"briefing": prepared_briefing})
-        final_response_content = response.content
-
-    else:
-        # Lawyer provided corrections or a new answer
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                (
-                    "system",
-                    """Present the lawyer's guidance to the user in a natural, conversational way.
-
-RULES:
-- Keep it concise and direct
-- Present facts without preamble
-- Include clause references when mentioned
-- Sound professional but human
-- Don't add "the lawyer says" or similar phrases
-
-EXAMPLES:
-
-Example 1 - Simple Approval:
-Lawyer: "Approved"
-Escalated Question: "Can we terminate the IBM agreement early?"
-Response: "Yes, you can terminate with 30 days' written notice, but you'll need to pay the early termination charges specified in Section 3.4."
-
-Example 2 - Correction/Addition:
-Lawyer: "Correct but add that co-hosting fee changes require mutual agreement"
-Response: "The quarterly co-hosting payments of $312,500 are fixed, and any changes would require mutual written agreement between you and Network Associates (Section 13.3)."
-
-Example 3 - Complex Guidance:
-Lawyer: "The distributor agreement is exclusive for South America only. They can't assign without consent per Section 1.01. Competitive products restriction applies to all nasal aspirators."
-Response: "Your Snotarator distributorship is exclusive for all South American countries and territories (Section 1.01). The agreement can't be assigned without written consent, and you're prohibited from selling any competing nasal aspirator products during the term."
-
-The lawyer has provided guidance on: {escalated_question}
-Lawyer's guidance: {lawyer_guidance}
-""",
-                ),
-                (
-                    "human",
-                    "Convert this guidance into a direct response for the user: {lawyer_guidance}",
-                ),
-            ]
-        )
-
-        chain = prompt | llm
-        response = chain.invoke(
-            {
-                "escalated_question": escalated_question or "the user's question",
-                "lawyer_guidance": lawyer_message,
-            }
-        )
-        final_response_content = response.content
-
-    return {
-        "base_response": final_response_content,
-        "conversation_history": history + [AIMessage(content=final_response_content)],
-    }

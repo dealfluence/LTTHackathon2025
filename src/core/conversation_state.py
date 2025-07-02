@@ -30,3 +30,6 @@ class ConversationState(TypedDict):
 
     # Base response before contextual enhancement
     base_response: Optional[str]
+    # NEW: Lawyer feedback handling
+    lawyer_feedback_type: Optional[str]
+    lawyer_suggestions: Optional[str]

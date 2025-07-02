@@ -61,7 +61,7 @@ async def startup_event():
         model=llm_config.get("model"),
         google_api_key=os.getenv("GOOGLE_API_KEY"),
         temperature=llm_config.get("temperature"),
-        thinking_budget=0
+        thinking_budget=0,
     )
 
     # Store the compiled graph in the app's state for global access
@@ -98,6 +98,8 @@ async def websocket_endpoint(websocket: WebSocket):
         "conversation_history": [],
         "escalated_question": None,
         "prepared_briefing": None,
+        "lawyer_feedback_type": None,
+        "lawyer_suggestions": None,
     }
 
     try:
