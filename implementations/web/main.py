@@ -32,11 +32,51 @@ async def startup_event():
     when the application starts.
     """
     print("Initializing application dependencies...")
+
+    # === DEBUG: Check environment variables ===
+    print("=== ENVIRONMENT DEBUG ===")
+    google_api_key = os.getenv("GOOGLE_API_KEY")
+    print(f"GOOGLE_API_KEY exists: {'GOOGLE_API_KEY' in os.environ}")
+    print(
+        f"GOOGLE_API_KEY value: {google_api_key[:10] + '...' if google_api_key else 'None'}"
+    )
+    print(f"GOOGLE_API_KEY length: {len(google_api_key) if google_api_key else 0}")
+    print(f"Railway environment: {os.getenv('RAILWAY_ENVIRONMENT_NAME', 'not set')}")
+    print(
+        f"All env vars with 'GOOGLE' or 'API': {[k for k in os.environ.keys() if 'GOOGLE' in k.upper() or 'API' in k.upper()]}"
+    )
+    print("========================")
+
+    # === VALIDATE API KEY ===
+    if not google_api_key:
+        print("❌ ERROR: GOOGLE_API_KEY environment variable not found!")
+        print("Available environment variables:")
+        for key in sorted(os.environ.keys()):
+            print(f"  {key}")
+        raise ValueError("GOOGLE_API_KEY must be set in environment variables")
+
+    if google_api_key in [
+        "your_google_api_key_here",
+        "your_actual_google_api_key_here",
+    ]:
+        print("❌ ERROR: GOOGLE_API_KEY is still set to placeholder value!")
+        raise ValueError(
+            "Please set a real Google API key in GOOGLE_API_KEY environment variable"
+        )
+
+    if len(google_api_key) < 30:  # Google API keys are typically longer
+        print("⚠️ WARNING: GOOGLE_API_KEY seems too short, might be invalid")
+
+    print(
+        f"✅ Google API key found and validated (length: {len(google_api_key)} chars)"
+    )
+
+    # === INITIALIZE CONFIGURATION ===
     config_manager = ConfigManager()
     llm_config = config_manager.get_llm_config()
     doc_config = config_manager.get_document_config()
 
-    # Load context from files
+    # === LOAD DOCUMENTS ===
     doc_source = LocalFileSource()
     knowledge_base_path = Path(doc_config.get("knowledge_base_path"))
 
@@ -50,25 +90,61 @@ async def startup_event():
                 full_doc_context += (
                     f"\n\n--- Document: {file_path.name} ---\n\n{doc_data['content']}"
                 )
+    else:
+        print(f"⚠️ Knowledge base path does not exist: {knowledge_base_path}")
 
     escalation_rules_path = Path(doc_config.get("escalation_rules_file"))
     escalation_rules = ""
     if escalation_rules_path.exists():
         print(f"Loading escalation rules from: {escalation_rules_path.name}")
         escalation_rules = escalation_rules_path.read_text()
+    else:
+        print(f"⚠️ Escalation rules file does not exist: {escalation_rules_path}")
 
-    llm = ChatGoogleGenerativeAI(
-        model=llm_config.get("model"),
-        google_api_key=os.getenv("GOOGLE_API_KEY"),
-        temperature=llm_config.get("temperature"),
-        thinking_budget=0,
-    )
+    # === INITIALIZE GOOGLE AI ===
+    try:
+        print(f"Initializing Google AI with model: {llm_config.get('model')}")
+        print(f"Temperature: {llm_config.get('temperature')}")
 
-    # Store the compiled graph in the app's state for global access
-    app.state.graph = create_conversational_graph(
-        llm, full_doc_context, escalation_rules
-    )
-    print("Application dependencies initialized and graph compiled.")
+        # Force the API key to be explicitly set
+        os.environ["GOOGLE_API_KEY"] = google_api_key
+
+        llm = ChatGoogleGenerativeAI(
+            model=llm_config.get("model"),
+            google_api_key=google_api_key,  # Explicitly pass the key
+            temperature=llm_config.get("temperature"),
+            thinking_budget=0,
+        )
+
+        print("✅ ChatGoogleGenerativeAI initialized successfully")
+
+        # Test the LLM with a simple call
+        try:
+            test_response = llm.invoke("Hello")
+            print("✅ Google AI test call successful")
+        except Exception as test_error:
+            print(f"⚠️ Google AI test call failed: {test_error}")
+            # Don't fail startup, but log the issue
+
+    except Exception as e:
+        print(f"❌ ERROR initializing Google AI: {e}")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Model: {llm_config.get('model')}")
+        print(f"Temperature: {llm_config.get('temperature')}")
+        print(
+            f"API key first 10 chars: {google_api_key[:10] if google_api_key else 'None'}"
+        )
+        raise
+
+    # === CREATE GRAPH ===
+    try:
+        app.state.graph = create_conversational_graph(
+            llm, full_doc_context, escalation_rules
+        )
+        print("✅ Application dependencies initialized and graph compiled.")
+    except Exception as e:
+        print(f"❌ ERROR creating conversational graph: {e}")
+        raise
 
 
 # Mount static files
