@@ -15,6 +15,7 @@ def create_directories():
         "data",
         "data/analyses",
         "data/uploads",
+        "data/knowledge_base",
         "logs",
         "static/css",
         "static/js",
